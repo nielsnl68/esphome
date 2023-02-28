@@ -18,7 +18,7 @@ enum ILI9XXXColorMode {
 class ILI9XXXDisplay : public PollingComponent,
                        public display::DisplayBuffer,
                        public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARITY_LOW,
-                                             spi::CLOCK_PHASE_LEADING, spi::DATA_RATE_40MHZ> {
+                                             spi::CLOCK_PHASE_LEADING, spi::DATA_RATE_20MHZ> {
  public:
   void set_dc_pin(GPIOPin *dc_pin) { dc_pin_ = dc_pin; }
   float get_setup_priority() const override;
@@ -85,7 +85,7 @@ class ILI9XXXDisplay : public PollingComponent,
 
   bool prossing_update_ = false;
   bool need_update_ = false;
-  bool is_18bitDisplay = false;
+  bool is_18bitdisplay = false;
 };
 
 //-----------   M5Stack display --------------

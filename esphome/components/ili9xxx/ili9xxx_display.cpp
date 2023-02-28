@@ -60,7 +60,7 @@ void ILI9XXXDisplay::dump_config() {
       ESP_LOGCONFIG(TAG, "  Color mode: 8bit 332 mode");
       break;
   }
-  if (this->is_18bitDisplay) {
+  if (this->is_18bitdisplay) {
     ESP_LOGCONFIG(TAG, "  18-Bit Mode: YES");
   } else {
     ESP_LOGCONFIG(TAG, "  18-Bit Mode: NO");
@@ -131,7 +131,6 @@ void HOT ILI9XXXDisplay::draw_absolute_pixel_internal(int x, int y, Color color)
   if (this->buffer_[pos] != new_color) {
     this->buffer_[pos] = new_color;
     updated = true;
-    
   }
   if (updated) {
     // low and high watermark may speed up drawing from buffer
@@ -171,7 +170,7 @@ void ILI9XXXDisplay::display_() {
     ESP_LOGV(TAG, "Nothing to display");
     return;
   }
-  
+
   set_addr_window_(this->x_low_, this->y_low_, w, h);
 
   ESP_LOGV(TAG,
@@ -188,7 +187,7 @@ void ILI9XXXDisplay::display_() {
       uint32_t sz = std::min(rem, ILI9XXX_TRANSFER_BUFFER_SIZE);
       ESP_LOGVV(TAG, "Send to display(pos:%d, rem:%d, zs:%d)", pos, rem, sz);
       buffer_to_transfer_(pos, sz);
-      if (this->is_18bitDisplay){
+      if (this->is_18bitdisplay) {
         for (uint32_t i = 0; i < sz; ++i) {
           uint16_t color_val = transfer_buffer_[i];
 
@@ -198,15 +197,11 @@ void ILI9XXXDisplay::display_() {
 
           uint8_t pass_buff[3];
 
-          pass_buff[2] = (uint8_t)((red/32.0)*64) << 2;
+          pass_buff[2] = (uint8_t)((red/32.0) * 64) << 2;
           pass_buff[1] = (uint8_t)green << 2;
-          pass_buff[0] = (uint8_t)((blue/32.0)*64) << 2;
+          pass_buff[0] = (uint8_t)((blue/32.0) * 64) << 2;
           
           this->write_array(pass_buff, sizeof(pass_buff));
-          
-          //this->write_byte(blue << 2);
-          //this->write_byte(green << 2);
-          //this->write_byte(red << 2);
 
         }
       } else {
@@ -399,7 +394,7 @@ void ILI9XXXILI9488::initialize() {
   if (this->height_ == 0) {
     this->height_ = 320;
   }
-  this->is_18bitDisplay = true;
+  this->is_18bitdisplay = true;
 }
 //    40_TFT display
 void ILI9XXXST7796::initialize() {

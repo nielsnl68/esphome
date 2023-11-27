@@ -10,6 +10,9 @@
 
 // Registers
 // Reference: https://focuslcds.com/content/FT6236.pdf
+namespace esphome {
+namespace ft63x6 {
+
 static const uint8_t FT63X6_ADDR_TOUCH_COUNT = 0x02;
 
 static const uint8_t FT63X6_ADDR_TOUCH1_ID = 0x05;
@@ -19,9 +22,6 @@ static const uint8_t FT63X6_ADDR_TOUCH1_Y = 0x05;
 static const uint8_t FT63X6_ADDR_TOUCH2_ID = 0x0B;
 static const uint8_t FT63X6_ADDR_TOUCH2_X = 0x09;
 static const uint8_t FT63X6_ADDR_TOUCH2_Y = 0x0B;
-
-namespace esphome {
-namespace ft63x6 {
 
 static const char *const TAG = "FT63X6Touchscreen";
 
@@ -47,20 +47,17 @@ void FT63X6Touchscreen::setup() {
 
 
 void FT63X6Touchscreen::update_touches() {
-  touch_point_.touch_count = read_touch_count_();
-
-  if (touch_point_.touch_count == 0) {
+  int touch_count = read_touch_count_();
+  if (touch_count == 0) {
     return;
   }
-
-  touched_ = true;
 
   uint8_t touch_id = read_touch_id_(FT63X6_ADDR_TOUCH1_ID);  // id1 = 0 or 1
   int16_t x = read_touch_coordinate_(FT63X6_ADDR_TOUCH1_X);
   int16_t y = read_touch_coordinate_(FT63X6_ADDR_TOUCH1_Y);
   set_raw_touch_posistion_(touch_id, x, y);
 
-  if (touch_point_.touch_count >= 2) {
+  if (touch_count >= 2) {
     touch_id = read_touch_id_(FT63X6_ADDR_TOUCH2_ID);  // id2 = 0 or 1(~id1 & 0x01)
     x = read_touch_coordinate_(FT63X6_ADDR_TOUCH2_X);
     y = read_touch_coordinate_(FT63X6_ADDR_TOUCH2_Y);

@@ -44,7 +44,6 @@ void FT63X6Touchscreen::setup() {
   this->y_raw_max_ = 480;
 }
 
-
 void FT63X6Touchscreen::update_touches() {
   int touch_count = read_touch_count_();
   if (touch_count == 0) {

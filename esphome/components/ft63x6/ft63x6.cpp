@@ -25,7 +25,6 @@ static const uint8_t FT63X6_ADDR_TOUCH2_Y = 0x0B;
 
 static const char *const TAG = "FT63X6Touchscreen";
 
-
 void FT63X6Touchscreen::setup() {
   ESP_LOGCONFIG(TAG, "Setting up FT63X6Touchscreen Touchscreen...");
   if (this->interrupt_pin_ != nullptr) {
@@ -41,8 +40,8 @@ void FT63X6Touchscreen::setup() {
   this->hard_reset_();
 
   // Get touch resolution
-  this->x_raw_max_= 320;
-  this->y_raw_max_= 480;
+  this->x_raw_max_ = 320;
+  this->y_raw_max_ = 480;
 }
 
 

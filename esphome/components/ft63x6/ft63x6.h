@@ -14,7 +14,6 @@
 namespace esphome {
 namespace ft63x6 {
 
-
 using namespace touchscreen;
 
 class FT63X6Touchscreen : public Touchscreen, public i2c::I2CDevice {

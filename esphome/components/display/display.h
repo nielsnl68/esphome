@@ -124,6 +124,7 @@ enum class ImageAlign {
   VERTICAL_ALIGNMENT = TOP | CENTER_VERTICAL | BOTTOM
 };
 
+
 enum DisplayType {
   DISPLAY_TYPE_BINARY = 1,
   DISPLAY_TYPE_GRAYSCALE = 2,
@@ -170,15 +171,40 @@ class BaseFont {
 
 class Display : public PollingComponent {
  public:
+  void set_dimensions(int16_t width, int16_t height) {
+    this->height_ = height;
+    this->width_ = width;
+  }
+  void set_offsets(int16_t offset_x, int16_t offset_y) {
+    this->offset_x_ = offset_x;
+    this->offset_y_ = offset_y;
+  }
+
+  /// Get the width of the display in pixels with rotation applied.
+  int get_width();
+  /// Get the height of the display in pixels with rotation applied.
+  int get_height();
+
+  /// Get the native display width in pixels.
+  int get_native_width() { return this->width_; }
+  /// Get the native display height in pixels.
+  int get_native_height() { return this->heigth_; }
+
+  /// software method to set the display rotation.
+  void set_rotation(DisplayRotation rotation) { this->rotation_ = rotation; }
+  DisplayRotation get_rotation() const { return this->rotation_; }
+
+  /// Internal method to set display auto clearing.
+  void set_auto_clear(bool auto_clear_enabled) { this->auto_clear_enabled_ = auto_clear_enabled; }
+
+  /// Deprecated
+  virtual DisplayType get_display_type(){ return };
+
   /// Fill the entire screen with the given color.
   virtual void fill(Color color);
+
   /// Clear the entire screen by filling it with OFF pixels.
   void clear();
-
-  /// Get the width of the image in pixels with rotation applied.
-  virtual int get_width() = 0;
-  /// Get the height of the image in pixels with rotation applied.
-  virtual int get_height() = 0;
 
   /// Set a single pixel at the specified coordinates to default color.
   inline void draw_pixel_at(int x, int y) { this->draw_pixel_at(x, y, COLOR_ON); }
@@ -470,18 +496,6 @@ class Display : public PollingComponent {
 
   void add_on_page_change_trigger(DisplayOnPageChangeTrigger *t) { this->on_page_change_triggers_.push_back(t); }
 
-  /// Internal method to set the display rotation with.
-  void set_rotation(DisplayRotation rotation);
-
-  // Internal method to set display auto clearing.
-  void set_auto_clear(bool auto_clear_enabled) { this->auto_clear_enabled_ = auto_clear_enabled; }
-
-  DisplayRotation get_rotation() const { return this->rotation_; }
-
-  /** Get the type of display that the buffer corresponds to. In case of dynamically configurable displays,
-   * returns the type the display is currently configured to.
-   */
-  virtual DisplayType get_display_type() = 0;
 
   /** Set the clipping rectangle for further drawing
    *
@@ -535,8 +549,9 @@ class Display : public PollingComponent {
   bool clamp_y_(int y, int h, int &min_y, int &max_y);
   void vprintf_(int x, int y, BaseFont *font, Color color, TextAlign align, const char *format, va_list arg);
 
-  void do_update_();
+  virtual void update_display();
   void clear_clipping_();
+  virtual void display_buffer(){}
 
   /**
    * This method fills a triangle using only integer variables by using a
@@ -554,6 +569,14 @@ class Display : public PollingComponent {
   std::vector<DisplayOnPageChangeTrigger *> on_page_change_triggers_;
   bool auto_clear_enabled_{true};
   std::vector<Rect> clipping_rectangle_;
+
+  uint16_t width_{0};
+  uint16_t height_{0};
+  int16_t offset_x_{0};
+  int16_t offset_y_{0};
+
+  bool processing_update_ = false;
+  bool needs_update_ = false;
 };
 
 class DisplayPage {

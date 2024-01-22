@@ -12,9 +12,59 @@ static const char *const TAG = "display";
 const Color COLOR_OFF(0, 0, 0, 0);
 const Color COLOR_ON(255, 255, 255, 255);
 
+void Display::update() {
+  if (this->processing_update_) {
+    this->needs_update_ = true;
+    return;
+  }
+  this->processing_update_ = true;
+  do {
+    this->needs_update_ = false;
+    this->update_display();
+  } while (this->needs_update_);
+  this->processing_update_ = false;
+  this->display_buffer();
+}
+
+void Display::update_display() {
+  if (this->auto_clear_enabled_) {
+    this->clear();
+  }
+  if (this->page_ != nullptr) {
+    this->page_->get_writer()(*this);
+  } else if (this->writer_.has_value()) {
+    (*this->writer_)(*this);
+  }
+  this->clear_clipping_();
+}
+
 void Display::fill(Color color) { this->filled_rectangle(0, 0, this->get_width(), this->get_height(), color); }
 void Display::clear() { this->fill(COLOR_OFF); }
-void Display::set_rotation(DisplayRotation rotation) { this->rotation_ = rotation; }
+
+int Display::get_width() {
+  switch (this->rotation_) {
+    case DISPLAY_ROTATION_90_DEGREES:
+    case DISPLAY_ROTATION_270_DEGREES:
+      return this->height_;
+    case DISPLAY_ROTATION_0_DEGREES:
+    case DISPLAY_ROTATION_180_DEGREES:
+    default:
+      return this->width_;
+  }
+}
+
+int Display::get_height() {
+  switch (this->rotation_) {
+    case DISPLAY_ROTATION_0_DEGREES:
+    case DISPLAY_ROTATION_180_DEGREES:
+      return this->height_;
+    case DISPLAY_ROTATION_90_DEGREES:
+    case DISPLAY_ROTATION_270_DEGREES:
+    default:
+      return this->width_;
+  }
+}
+
 void HOT Display::line(int x1, int y1, int x2, int y2, Color color) {
   const int32_t dx = abs(x2 - x1), sx = x1 < x2 ? 1 : -1;
   const int32_t dy = -abs(y2 - y1), sy = y1 < y2 ? 1 : -1;
@@ -418,17 +468,7 @@ void Display::show_page(DisplayPage *page) {
 }
 void Display::show_next_page() { this->page_->show_next(); }
 void Display::show_prev_page() { this->page_->show_prev(); }
-void Display::do_update_() {
-  if (this->auto_clear_enabled_) {
-    this->clear();
-  }
-  if (this->page_ != nullptr) {
-    this->page_->get_writer()(*this);
-  } else if (this->writer_.has_value()) {
-    (*this->writer_)(*this);
-  }
-  this->clear_clipping_();
-}
+
 void DisplayOnPageChangeTrigger::process(DisplayPage *from, DisplayPage *to) {
   if ((this->from_ == nullptr || this->from_ == from) && (this->to_ == nullptr || this->to_ == to))
     this->trigger(from, to);

@@ -4,46 +4,100 @@
 namespace esphome {
 namespace display {
 enum ColorOrder : uint8_t { COLOR_ORDER_RGB = 0, COLOR_ORDER_BGR = 1, COLOR_ORDER_GRB = 2 };
-enum ColorBitness : uint8_t { COLOR_BITNESS_888 = 0, COLOR_BITNESS_565 = 1, COLOR_BITNESS_332 = 2 };
+
+/**
+ * the ColorDepth values tells how a pixel is stored:
+ * DDDD: is the divider
+ * xBBB: number of bytes per pixel
+ * I: Indexed value
+ * G: grayscale
+ * FF FFFF: color structure in bits
+ */
+
+enum ColorBitness : uint8_t {
+  COLOR_BITNESS_888 = 0x1318,
+  COLOR_BITNESS_666 = 0x1312,
+  COLOR_BITNESS_565 = 0x1210,
+  COLOR_BITNESS_332 = 0x1108,
+  COLOR_BITNESS_8I = 0x1188,
+  COLOR_BITNESS_8 = 0x1148,
+  COLOR_BITNESS_4 = 0x2144,
+  COLOR_BITNESS_2 = 0x4142,
+  COLOR_BITNESS_1 = 0x8101,
+};
+static const uint16_t COLOR_BITNESS_COLOR_BITS = 0x003F;
+static const uint16_t COLOR_BITNESS_GRAYSCALE = 0x0040;
+static const uint16_t COLOR_BITNESS_INDEXED = 0x0080;
+static const uint16_t COLOR_BITNESS_BYTES = 0x0700;
+static const uint16_t COLOR_BITNESS_DUMMY = 0x0800;
+static const uint16_t COLOR_BITNESS_DEVIDER = 0xF000;
+
 inline static uint8_t esp_scale(uint8_t i, uint8_t scale, uint8_t max_value = 255) { return (max_value * i / scale); }
+static ColorBits get_color_bits(ColorBitness bitness) {
+  ColorBits result;
+  switch (bitness) {
+    case COLOR_BITNESS_888:
+      result.first_bits = 8;
+      result.second_bits = 8;
+      result.third_bits = 8;
+      break;
+    case COLOR_BITNESS_666:
+      result.first_bits = 6;
+      result.second_bits = 6;
+      result.third_bits = 6;
+      break;
+    case COLOR_BITNESS_565:
+      result.first_bits = 5;
+      result.second_bits = 6;
+      result.third_bits = 5;
+      break;
+    case COLOR_BITNESS_4:
+      result.first_bits = 3;
+      result.second_bits = 3;
+      result.third_bits = 2;
+      break;
+  }
+  return result;
+}
+
+struct {
+  uint8_t first_bits = 0;
+  uint8_t second_bits = 0;
+  uint8_t third_bits = 0;
+} ColorBits;
 
 class ColorUtil {
  public:
+  // depricated
   static Color to_color(uint32_t colorcode, ColorOrder color_order,
                         ColorBitness color_bitness = ColorBitness::COLOR_BITNESS_888, bool right_bit_aligned = true) {
-    uint8_t first_color, second_color, third_color;
-    uint8_t first_bits = 0;
-    uint8_t second_bits = 0;
-    uint8_t third_bits = 0;
+    static Color ColorUtil::to_color(colorcode, color_bitness, nullptr, color_order, right_bit_aligned);
+  }
 
-    switch (color_bitness) {
-      case COLOR_BITNESS_888:
-        first_bits = 8;
-        second_bits = 8;
-        third_bits = 8;
-        break;
-      case COLOR_BITNESS_565:
-        first_bits = 5;
-        second_bits = 6;
-        third_bits = 5;
-        break;
-      case COLOR_BITNESS_332:
-        first_bits = 3;
-        second_bits = 3;
-        third_bits = 2;
-        break;
+  static Color to_color(uint32_t colorcode, ColorBitness color_bitness, const uint8_t *palette = nullptr,
+                        ColorOrder color_order = ColorOrder.COLOR_ORDER_RGB, bool right_bit_aligned = true) {
+    if (color_bitness & COLOR_BITNESS_INDEXED) {
+      return ColorUtil::index8_to_color_palette888(colorcode, palette);
+    }
+    if (color_bitness & COLOR_BITNESS_GRAYSCALE) {
+      return Color::BLACK;
     }
 
-    first_color = right_bit_aligned ? esp_scale(((colorcode >> (second_bits + third_bits)) & ((1 << first_bits) - 1)),
-                                                ((1 << first_bits) - 1))
-                                    : esp_scale(((colorcode >> 16) & 0xFF), (1 << first_bits) - 1);
+    uint8_t first_color, second_color, third_color;
+    ColorBits bits = get_color_bits(color_bitness);
 
-    second_color = right_bit_aligned
-                       ? esp_scale(((colorcode >> third_bits) & ((1 << second_bits) - 1)), ((1 << second_bits) - 1))
-                       : esp_scale(((colorcode >> 8) & 0xFF), ((1 << second_bits) - 1));
+    first_color = right_bit_aligned
+                      ? esp_scale(((colorcode >> (bits.second_bits + bits.third_bits)) & ((1 << bits.first_bits) - 1)),
+                                  ((1 << bits.first_bits) - 1))
+                      : esp_scale(((colorcode >> 16) & 0xFF), (1 << bits.first_bits) - 1);
 
-    third_color = (right_bit_aligned ? esp_scale(((colorcode >> 0) & ((1 << third_bits) - 1)), ((1 << third_bits) - 1))
-                                     : esp_scale(((colorcode >> 0) & 0xFF), (1 << third_bits) - 1));
+    second_color = right_bit_aligned ? esp_scale(((colorcode >> bits.third_bits) & ((1 << bits.second_bits) - 1)),
+                                                 ((1 << bits.second_bits) - 1))
+                                     : esp_scale(((colorcode >> 8) & 0xFF), ((1 << bits.second_bits) - 1));
+
+    third_color = right_bit_aligned
+                      ? esp_scale(((colorcode >> 0) & ((1 << bits.third_bits) - 1)), ((1 << bits.third_bits) - 1))
+                      : esp_scale(((colorcode >> 0) & 0xFF), (1 << bits.third_bits) - 1);
 
     Color color_return;
 
@@ -66,6 +120,35 @@ class ColorUtil {
     }
     return color_return;
   }
+
+  static uint32_t from_color(Color color, ColorBitness color_bitness, const uint8_t *palette = nullptr,
+                             ColorOrder color_order = ColorOrder.COLOR_ORDER_RGB, bool right_bit_aligned = true) {
+    if (color_bitness & COLOR_BITNESS_INDEXED) {
+      return ColorUtil::color_to_index8_palette888(color, palette);
+    }
+
+    if (color_bitness & COLOR_BITNESS_GRAYSCALE) {
+      return ColorUtil::color_to_grayscale4(color);
+    }
+
+    ColorBits bits = get_color_bits(color_bitness);
+    uint16_t red_color, green_color, blue_color;
+
+    red_color = esp_scale8(color.red, ((1 << bits.first_bits) - 1));
+    green_color = esp_scale8(color.green, ((1 << bits.second_bits) - 1));
+    blue_color = esp_scale8(color.blue, (1 << bits.third_bits) - 1);
+
+    switch (color_order) {
+      case COLOR_ORDER_RGB:
+        return red_color << (bits.third_bits + bits.second_bits) | green_color << bits.third_bits | blue_color;
+      case COLOR_ORDER_BGR:
+        return blue_color << (bits.first_bits + bits.second_bits) | green_color << bits.first_bits | red_color;
+      case COLOR_ORDER_GRB:
+        return green_color << (bits.third_bits + bits.first_bits) | red_color << bits.third_bits | blue_color;
+    }
+    return 0;
+  }
+
   static inline Color rgb332_to_color(uint8_t rgb332_color) {
     return to_color((uint32_t) rgb332_color, COLOR_ORDER_RGB, COLOR_BITNESS_332);
   }
@@ -103,10 +186,12 @@ class ColorUtil {
     }
     return 0;
   }
+
   static uint32_t color_to_grayscale4(Color color) {
     uint32_t gs4 = esp_scale8(color.white, 15);
     return gs4;
   }
+
   /***
    * Converts a Color value to an 8bit index using a 24bit 888 palette.
    * Uses euclidiean distance to calculate the linear distance between

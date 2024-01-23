@@ -17,6 +17,7 @@ esp32:
   framework:
     type: arduino
 
+
 logger:
   level: verbose
   # hardware_uart: USB_CDC
@@ -32,11 +33,14 @@ display:
   - platform: display_driver
     id: my_display
     model: ili9341
-#    cs_pin: 5
-    dc_pin: 12
+    interface:
+      type: SPI
+      cs_pin: 5
+      dc_pin: 12
+      data_rate: 10MHz
     reset_pin: 35
     auto_clear_enabled: false
-#    data_rate: 40MHz
+
     dimensions: 320x240
     update_interval: never
     transform:

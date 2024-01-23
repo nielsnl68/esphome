@@ -25,6 +25,7 @@ from esphome.const import (
     CONF_OFFSET_WIDTH,
     CONF_TRANSFORM,
     CONF_INVERT_COLORS,
+    CONF_TYPE,
 )
 
 DEPENDENCIES = ["spi"]
@@ -49,6 +50,8 @@ DisplayDriver = display_ns.class_(
 )
 
 displayInterface = display_ns.class_("displayInterface")
+SPI_Interface = display_ns.class_("SPI_Interface", displayInterface)
+SPI16D_Interface = display_ns.class_("SPI16D_Interface", displayInterface)
 
 ColorMode = display_ns.enum("ColorMode")
 
@@ -68,10 +71,6 @@ MODELS = {
     "ST7789V": display_ns.class_("Display_ST7789V", DisplayDriver),
     "S3BOX": display_ns.class_("Display_S3Box", DisplayDriver),
     "S3BOX_LITE": display_ns.class_("Display_S3BoxLite", DisplayDriver),
-}
-
-INTERFACES = {
-    "SPI": display_ns.class_("SPI_Interface", displayInterface),
 }
 
 ColorOrder = display.display_ns.enum("ColorMode")
@@ -111,15 +110,36 @@ def _validate(config):
     return config
 
 
+CONF_BUS_ID = "bus_id"
+
+
+INTERFACE_SCHEMA = cv.typed_schema(
+    {
+        "SPI": spi.spi_device_schema(False, "40MHz").extend(
+            {
+                cv.GenerateID(CONF_BUS_ID): cv.declare_id(SPI_Interface),
+                cv.Required(CONF_DC_PIN): pins.gpio_output_pin_schema,
+            }
+        ),
+        "SPI16D": spi.spi_device_schema(False, "40MHz").extend(
+            {
+                cv.GenerateID(CONF_BUS_ID): cv.declare_id(SPI16D_Interface),
+                cv.Required(CONF_DC_PIN): pins.gpio_output_pin_schema,
+            }
+        ),
+    },
+    default_type="SPI",
+    lower=False,
+)
+
+
 CONFIG_SCHEMA = cv.All(
     font.validate_pillow_installed,
     display.FULL_DISPLAY_SCHEMA.extend(
         {
             cv.GenerateID(): cv.declare_id(DisplayDriver),
             cv.Required(CONF_MODEL): cv.enum(MODELS, upper=True, space="_"),
-            cv.Optional(CONF_INTERFACE, default="SPI"): cv.enum(
-                INTERFACES, upper=True, space="_"
-            ),
+            cv.Required(CONF_INTERFACE): INTERFACE_SCHEMA,
             cv.Optional(CONF_DIMENSIONS): cv.Any(
                 cv.dimensions,
                 cv.Schema(
@@ -131,7 +151,6 @@ CONFIG_SCHEMA = cv.All(
                     }
                 ),
             ),
-            cv.Required(CONF_DC_PIN): pins.gpio_output_pin_schema,
             cv.Optional(CONF_RESET_PIN): pins.gpio_output_pin_schema,
             cv.Optional(CONF_COLOR_PALETTE, default="NONE"): COLOR_PALETTE,
             cv.GenerateID(CONF_RAW_DATA_ID): cv.declare_id(cg.uint8),
@@ -153,20 +172,27 @@ CONFIG_SCHEMA = cv.All(
     ).extend(cv.polling_component_schema("1s")),
     cv.has_at_most_one_key(CONF_PAGES, CONF_LAMBDA),
     _validate,
-)  # .extend(spi.spi_device_schema(False, "40MHz"))
+)
 
 
 async def to_code(config):
     rhs = MODELS[config[CONF_MODEL]].new()
     var = cg.Pvariable(config[CONF_ID], rhs)
     await display.register_display(var, config)
+    bus_config = config[CONF_INTERFACE]
 
-    bus = INTERFACES[config[CONF_INTERFACE]].new()
-    if config[CONF_INTERFACE] == "SPI":
-        await spi.register_spi_device(bus, config)
-        dc = await cg.gpio_pin_expression(config[CONF_DC_PIN])
-        cg.add(bus.set_dc_pin(dc))
+    bus = cg.new_Pvariable(bus_config[CONF_BUS_ID])
     cg.add(var.set_interface(bus))
+
+    if bus_config[CONF_TYPE] == "SPI":
+        await spi.register_spi_device(bus, bus_config)
+        dc = await cg.gpio_pin_expression(bus_config[CONF_DC_PIN])
+        cg.add(bus.set_dc_pin(dc))
+
+    if bus_config[CONF_TYPE] == "SPI16D":
+        await spi.register_spi_device(bus, bus_config)
+        dc = await cg.gpio_pin_expression(bus_config[CONF_DC_PIN])
+        cg.add(bus.set_dc_pin(dc))
 
     if CONF_COLOR_ORDER in config:
         cg.add(var.set_color_order(COLOR_ORDERS[config[CONF_COLOR_ORDER]]))

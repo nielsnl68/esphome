@@ -100,6 +100,7 @@ void DisplayDriver::setup_lcd() {
   }
 
   this->bus_->send_command(this->pre_invertcolors_ ? ILI9XXX_INVON : ILI9XXX_INVOFF);
+
   // custom x/y transform and color order
   uint8_t mad = this->color_order_ == COLOR_ORDER_BGR ? MADCTL_BGR : MADCTL_RGB;
   if (this->swap_xy_)
@@ -110,7 +111,7 @@ void DisplayDriver::setup_lcd() {
     mad |= MADCTL_MY;
   this->bus_->send_command(ILI9XXX_MADCTL, &mad, 1);
 
-  mad = this->display_bitness_==ColorBitness::COLOR_BITNESS_666 ? 0x66 : 0x55;
+  mad = this->display_bitness_ == ColorBitness::COLOR_BITNESS_666 ? 0x66 : 0x55;
   this->bus_->send_command(ILI9XXX_PIXFMT, &mad, 1);
 
   this->bus_->end();
@@ -173,7 +174,7 @@ void DisplayDriver::allocate_buffer_(uint32_t buffer_length) {
   this->buffer_ = allocator.allocate(buffer_length);
 }
 
-void dunp_bridness(std::string title, ColorBitness bridness) {
+void dump_bridness(std::string title, ColorBitness bridness) {
   std::string depth;
   switch (bridness) {
     case ColorBitness::COLOR_BITNESS_1:
@@ -212,14 +213,14 @@ void DisplayDriver::dump_config() {
   ESP_LOGCONFIG(TAG, "  Width Offset: %u", this->offset_x_);
   ESP_LOGCONFIG(TAG, "  Height Offset: %u", this->offset_y_);
   if (this->buffer_ != nullptr) {
-    dunp_bridness("  Buffer Color Dept: %s", this->buffer_bitness_);
+    dump_bridness("  Buffer Color Dept: %s", this->buffer_bitness_);
   }
-  dunp_bridness("  Display Color Dept: %s", this->display_bitness_);
-  //ESP_LOGCONFIG(TAG, "  Data rate: %dMHz", (unsigned) (this->data_rate_ / 1000000));
+  dump_bridness("  Display Color Dept: %s", this->display_bitness_);
+  // ESP_LOGCONFIG(TAG, "  Data rate: %dMHz", (unsigned) (this->data_rate_ / 1000000));
 
   LOG_PIN("  Reset Pin: ", this->reset_pin_);
-  //LOG_PIN("  CS Pin: ", this->cs_);
-  //LOG_PIN("  DC Pin: ", this->dc_pin_);
+  // LOG_PIN("  CS Pin: ", this->cs_);
+  // LOG_PIN("  DC Pin: ", this->dc_pin_);
 
   ESP_LOGCONFIG(TAG, "  Swap_xy: %s", YESNO(this->swap_xy_));
   ESP_LOGCONFIG(TAG, "  Mirror_x: %s", YESNO(this->mirror_x_));
@@ -235,12 +236,12 @@ void DisplayDriver::fill(Color color) {
   this->setup_buffer();
   uint8_t bytes_per_pixel = (uint8_t) this->buffer_bitness_ >> 16;
   size_t count = this->get_buffer_length_();
-  size_t loop = 0;
+  const uint8_t *addr = this->buffer_;
   uint32_t new_color = ColorUtil::from_color(color, this->buffer_bitness_, this->palette_);
 
   while (count--) {
-    memcpy(this->buffer_ + loop, (const void *) &new_color, bytes_per_pixel);
-    loop += bytes_per_pixel;
+    memcpy((void *) addr, (const void *) &new_color, bytes_per_pixel);
+    addr += bytes_per_pixel;
   }
 }
 
@@ -248,46 +249,41 @@ void HOT DisplayDriver::buffer_pixel_at(int x, int y, Color color) {
   if (x >= this->width_ || x < 0 || y >= this->height_ || y < 0) {
     return;
   }
-  uint32_t pos = (y * this->width_) + x;
-  uint16_t new_color = ColorUtil::from_color(color, this->buffer_bitness_, this->palette_);
-  bool updated = false;
   this->setup_buffer();
 
-  switch (this->buffer_bitness_) {
-    case ColorBitness::COLOR_BITNESS_888:
-    case ColorBitness::COLOR_BITNESS_666:
-      pos = pos * 3;
-      if ((this->buffer_[pos + 0] != (uint8_t) (new_color >> 16)) &&
-          (this->buffer_[pos + 1] != (uint8_t) (new_color >> 8)) &&
-          (this->buffer_[pos + 2] != (uint8_t) (new_color >> 0))) {
-        this->buffer_[pos + 0] = (uint8_t) (new_color >> 16);
-        this->buffer_[pos + 1] = (uint8_t) (new_color >> 8);
-        this->buffer_[pos + 2] = (uint8_t) (new_color >> 0);
-        updated = true;
-      }
-      break;
-    case ColorBitness::COLOR_BITNESS_565:
-      pos = pos * 2;
-      if ((this->buffer_[pos + 0] != (uint8_t) (new_color >> 8) &&
-           (this->buffer_[pos + 1] != (uint8_t) (new_color >> 0)))) {
-        this->buffer_[pos + 0] = (uint8_t) (new_color >> 8);
-        this->buffer_[pos + 1] = (uint8_t) (new_color >> 0);
-        updated = true;
-      }
-      break;
-    case ColorBitness::COLOR_BITNESS_332:
-    case ColorBitness::COLOR_BITNESS_8I:
-    case ColorBitness::COLOR_BITNESS_8:
-      if (this->buffer_[pos] != new_color) {
-        this->buffer_[pos] = new_color;
-        updated = true;
-      }
-    default:
+  uint32_t old_color, new_color = ColorUtil::from_color(color, this->buffer_bitness_, this->palette_);
+  uint8_t bytes_per_pixel = (uint8_t) this->buffer_bitness_ >> 16;
+  uint8_t devider = this->buffer_bitness_ >> 24;
 
-      break;
+  const char *addr = (char *) this->buffer_;
+  size_t width = this->width_, x_buf = x;
+  if (devider > 1) {
+    x_buf = (x - (x % devider)) / devider;
+    width = (this->width_ + (devider - (this->width_ % devider))) / devider;
   }
-
-  if (updated) {
+  addr += ((y * width) + x_buf) * bytes_per_pixel;
+  memcpy((void *) &old_color, (const void *) addr, bytes_per_pixel);
+  if (devider > 1) {
+    uint8_t bitpos = (x % devider) * (8 / devider);
+    uint8_t mask = 0;
+    switch (devider) {
+      case 2:
+        mask = 0x0F << bitpos;
+        new_color &= - 0x0f;
+        break;
+      case 4:
+        mask = 0x03 << bitpos;
+        new_color &= -0x03;
+        break;
+      default:
+        mask = 0x01 << bitpos;
+        new_color &= -0x01;
+        break;
+    }
+    new_color = (old_color & ~mask) | new_color << bitpos;
+  }
+  if (old_color != new_color) {
+    memcpy((void *) addr, (const void *) &new_color, bytes_per_pixel);
     // low and high watermark may speed up drawing from buffer
     if (x < this->x_low_)
       this->x_low_ = x;
@@ -317,9 +313,9 @@ void DisplayDriver::display_buffer() {
   uint8_t bytes_per_pixel = (uint8_t) this->buffer_bitness_ >> 16;
   uint8_t devider = this->buffer_bitness_ >> 24;
 
-  size_t mhz = 40; ///// this->data_rate_ / 1000000;
+  //  size_t mhz = 40; ///// this->data_rate_ / 1000000;
   // estimate time for a single write
-//  size_t sw_time = this->width_ * h * 16 / mhz + this->width_ * h * 2 / SPI_MAX_BLOCK_SIZE * SPI_SETUP_US * 2;
+  //  size_t sw_time = this->width_ * h * 16 / mhz + this->width_ * h * 2 / SPI_MAX_BLOCK_SIZE * SPI_SETUP_US * 2;
   // estimate time for multiple writes
   // size_t mw_time = (w * h * 16) / mhz + w * h * 2 / TRANSFER_BUFFER_SIZE * SPI_SETUP_US;
 
@@ -339,9 +335,6 @@ void DisplayDriver::display_buffer() {
   size_t w = x_high - x_low + 1;
   size_t h = y_high - y_low + 1;
 
-  size_t rem = h * w;  // remaining number of pixels to write
-  size_t idx = 0;      // index into transfer_buffer
-  size_t pixel = 0;    // pixel number offset
   size_t pos = y_low * d_width + x_low;
 
   ESP_LOGV(TAG,
@@ -358,39 +351,31 @@ void DisplayDriver::display_buffer() {
     }
   } else {
     ESP_LOGV(TAG, "Doing multiple write");
+    uint8_t display_bytes_per_pixel = (uint8_t) this->display_bitness_ >> 16;
+    const char *addr = (char *) this->buffer_ + (pos * bytes_per_pixel);
+    size_t col = x_low, row = y_low;    // remaining number of pixels to write
+    size_t idx = 0;      // index into transfer_buffer
 
-    while (rem-- != 0) {
+    while (true) {
       uint32_t color_val;
-      Color color;
-      switch (this->buffer_bitness_) {
-        case ColorBitness::COLOR_BITNESS_332:
-          color = (ColorUtil::rgb332_to_color(this->buffer_[pos++]));
-          break;
-        case ColorBitness::COLOR_BITNESS_8I:
-          color =  ColorUtil::index8_to_color_palette888(this->buffer_[pos++], this->palette_);
-          break;
-        default:  // case COLOR_BITNESS_16:
-          color_val = (buffer_[pos * 2] << 8) + buffer_[pos * 2 + 1];
-          pos++;
-          break;
-      }
-      if (this->get_18bit_mode()) {
-        transfer_buffer[idx++] = (uint8_t) ((color_val & 0xF800) >> 8);  // Blue
-        transfer_buffer[idx++] = (uint8_t) ((color_val & 0x7E0) >> 3);   // Green
-        transfer_buffer[idx++] = (uint8_t) (color_val << 3);             // Red
-      } else {
-        put16_be(transfer_buffer + idx, color_val);
-        idx += 2;
-      }
-      if (idx == TRANSFER_BUFFER_SIZE) {
+      memcpy((void *) &color_val, (const void *) addr, bytes_per_pixel);
+      Color color = ColorUtil::to_color(color_val, this->buffer_bitness_ , this->palette_ );
+      color_val = ColorUtil::from_color(color, this->display_bitness_, this->palette_);
+      memcpy((void *) &transfer_buffer, (const void *) color_val, display_bytes_per_pixel);
+
+      if (++idx == TRANSFER_BUFFER_SIZE) {
         this->bus_->send_data(transfer_buffer, idx);
         idx = 0;
         App.feed_wdt();
       }
       // end of line? Skip to the next.
-      if (++pixel == w) {
-        pixel = 0;
-        pos += this->width_ - w;
+      if (++col == x_high) {
+        addr += ((d_width - w) * bytes_per_pixel);
+        col = x_low;
+        row++;
+      }
+      if (row == y_high){
+        break;
       }
     }
     // flush any balance.
@@ -408,9 +393,8 @@ void DisplayDriver::display_buffer() {
 }
 
 // note that this bypasses the buffer and writes directly to the display.
-void DisplayDriver::draw_pixels_at(int x_start, int y_start, int w, int h, const uint8_t *ptr,
-                                   ColorOrder order, ColorBitness bitness, bool big_endian,
-                                   int x_offset, int y_offset, int x_pad) {
+void DisplayDriver::draw_pixels_at(int x_start, int y_start, int w, int h, const uint8_t *ptr, ColorOrder order,
+                                   ColorBitness bitness, bool big_endian, int x_offset, int y_offset, int x_pad) {
   if (w <= 0 || h <= 0)
     return;
   // if color mapping or software rotation is required, hand this off to the parent implementation. This will
@@ -418,8 +402,7 @@ void DisplayDriver::draw_pixels_at(int x_start, int y_start, int w, int h, const
   // configured the renderer well.
   if (this->rotation_ != DISPLAY_ROTATION_0_DEGREES || bitness != COLOR_BITNESS_565 || !big_endian ||
       this->get_18bit_mode()) {
-    return draw_pixels_at(x_start, y_start, w, h, ptr, order, bitness, big_endian, x_offset, y_offset,
-                                            x_pad);
+    return draw_pixels_at(x_start, y_start, w, h, ptr, order, bitness, big_endian, x_offset, y_offset, x_pad);
   }
   this->bus_->start();
   this->set_addr_window(x_start, y_start, x_start + w - 1, y_start + h - 1);
@@ -573,5 +556,5 @@ void SPI16D_Interface::data(const uint8_t *value, uint16_t len) {
   this->end_data();
 }
 
-}  // namespace display_driver
+}  // namespace display
 }  // namespace esphome

@@ -72,7 +72,6 @@ class DisplayDriver : public Display {
   DisplayDriver() = default;
   DisplayDriver(uint8_t const *init_sequence, int16_t width, int16_t height, bool invert_colors);
 
-  float get_setup_priority() const override;
   void set_interface(displayInterface *interface) { this->bus_ = interface; }
   void set_reset_pin(GPIOPin *reset) { this->reset_pin_ = reset; }
   void set_palette(const uint8_t *palette) { this->palette_ = palette; }

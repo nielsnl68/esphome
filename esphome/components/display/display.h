@@ -171,7 +171,7 @@ class BaseFont {
 
 class Display : public PollingComponent {
  public:
-  void update() override; 
+  void update() override;
   void set_dimensions(int16_t width, int16_t height) {
     this->height_ = height;
     this->width_ = width;
@@ -550,7 +550,7 @@ class Display : public PollingComponent {
   bool clamp_y_(int y, int h, int &min_y, int &max_y);
   void vprintf_(int x, int y, BaseFont *font, Color color, TextAlign align, const char *format, va_list arg);
 
-  virtual void update_display();
+  virtual void do_update_();
   void clear_clipping_();
   virtual void display_buffer(){}
 

@@ -20,13 +20,13 @@ void Display::update() {
   this->processing_update_ = true;
   do {
     this->needs_update_ = false;
-    this->update_display();
+    this->do_update_();
   } while (this->needs_update_);
   this->processing_update_ = false;
   this->display_buffer();
 }
 
-void Display::update_display() {
+void Display::do_update_() {
   if (this->auto_clear_enabled_) {
     this->clear();
   }

@@ -4,7 +4,7 @@
 #include <cinttypes>
 
 namespace esphome {
-namespace ili9xxx {
+namespace display {
 
 // clang-format off
 static const uint8_t PROGMEM INITCMD_M5STACK[] = {
@@ -396,5 +396,5 @@ class Display_S3BoxLite : public DisplayDriver {
 };
 
 // clang-format on
-}  // namespace ili9xxx
+}  // namespace display
 }  // namespace esphome

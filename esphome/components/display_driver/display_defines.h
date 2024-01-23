@@ -1,7 +1,7 @@
 #pragma once
 
 namespace esphome {
-namespace ili9xxx {
+namespace display {
 
 // Color definitions
 // clang-format off
@@ -92,5 +92,5 @@ static const uint8_t ILI9XXX_GMCTRN1 = 0xE1;
 static const uint8_t ILI9XXX_CSCON = 0xF0;
 static const uint8_t ILI9XXX_ADJCTL3 = 0xF7;
 
-}  // namespace ili9xxx
+}  // namespace display
 }  // namespace esphome

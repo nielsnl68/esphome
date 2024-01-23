@@ -2,7 +2,7 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import core, pins
 from esphome.components import display, spi, font
-from esphome.components.display import validate_rotation
+from esphome.components.display import validate_rotation, display_ns
 from esphome.core import CORE, HexInt
 from esphome.const import (
     CONF_COLOR_PALETTE,
@@ -42,39 +42,36 @@ CONF_COLOR_PALETTE_IMAGES = "color_palette_images"
 CONF_INTERFACE = "interface"
 CONF_18BIT_MODE = "18bit_mode"
 
-DisplayDriver_ns = cg.esphome_ns.namespace("display_driver")
-DisplayDriver = DisplayDriver_ns.class_(
+
+DisplayDriver = display_ns.class_(
     "DisplayDriver",
-    cg.PollingComponent,
-    spi.SPIDevice,
     display.Display,
-    display.DisplayBuffer,
 )
 
-displayInterface = DisplayDriver_ns.class_("displayInterface")
+displayInterface = display_ns.class_("displayInterface")
 
-ColorMode = DisplayDriver_ns.enum("ColorMode")
+ColorMode = display_ns.enum("ColorMode")
 
 MODELS = {
-    "M5STACK": DisplayDriver_ns.class_("Display_M5Stack", DisplayDriver),
-    "M5CORE": DisplayDriver_ns.class_("Display_M5CORE", DisplayDriver),
-    "TFT_2.4": DisplayDriver_ns.class_("Display_ILI9341", DisplayDriver),
-    "TFT_2.4R": DisplayDriver_ns.class_("Display_ILI9342", DisplayDriver),
-    "ILI9341": DisplayDriver_ns.class_("Display_ILI9341", DisplayDriver),
-    "ILI9342": DisplayDriver_ns.class_("Display_ILI9342", DisplayDriver),
-    "ILI9481": DisplayDriver_ns.class_("Display_ILI9481", DisplayDriver),
-    "ILI9481-18": DisplayDriver_ns.class_("Display_ILI948118", DisplayDriver),
-    "ILI9486": DisplayDriver_ns.class_("Display_ILI9486", DisplayDriver),
-    "ILI9488": DisplayDriver_ns.class_("Display_ILI9488", DisplayDriver),
-    "ILI9488_A": DisplayDriver_ns.class_("Display_ILI9488A", DisplayDriver),
-    "ST7796": DisplayDriver_ns.class_("Display_ST7796", DisplayDriver),
-    "ST7789V": DisplayDriver_ns.class_("Display_ST7789V", DisplayDriver),
-    "S3BOX": DisplayDriver_ns.class_("Display_S3Box", DisplayDriver),
-    "S3BOX_LITE": DisplayDriver_ns.class_("Display_S3BoxLite", DisplayDriver),
+    "M5STACK": display_ns.class_("Display_M5Stack", DisplayDriver),
+    "M5CORE": display_ns.class_("Display_M5CORE", DisplayDriver),
+    "TFT_2.4": display_ns.class_("Display_ILI9341", DisplayDriver),
+    "TFT_2.4R": display_ns.class_("Display_ILI9342", DisplayDriver),
+    "ILI9341": display_ns.class_("Display_ILI9341", DisplayDriver),
+    "ILI9342": display_ns.class_("Display_ILI9342", DisplayDriver),
+    "ILI9481": display_ns.class_("Display_ILI9481", DisplayDriver),
+    "ILI9481-18": display_ns.class_("Display_ILI948118", DisplayDriver),
+    "ILI9486": display_ns.class_("Display_ILI9486", DisplayDriver),
+    "ILI9488": display_ns.class_("Display_ILI9488", DisplayDriver),
+    "ILI9488_A": display_ns.class_("Display_ILI9488A", DisplayDriver),
+    "ST7796": display_ns.class_("Display_ST7796", DisplayDriver),
+    "ST7789V": display_ns.class_("Display_ST7789V", DisplayDriver),
+    "S3BOX": display_ns.class_("Display_S3Box", DisplayDriver),
+    "S3BOX_LITE": display_ns.class_("Display_S3BoxLite", DisplayDriver),
 }
 
 INTERFACES = {
-    "SPI": DisplayDriver_ns.class_("SPI_Interface", displayInterface),
+    "SPI": display_ns.class_("SPI_Interface", displayInterface),
 }
 
 ColorOrder = display.display_ns.enum("ColorMode")
@@ -162,11 +159,15 @@ CONFIG_SCHEMA = cv.All(
 async def to_code(config):
     rhs = MODELS[config[CONF_MODEL]].new()
     var = cg.Pvariable(config[CONF_ID], rhs)
-
     await display.register_display(var, config)
-    await spi.register_spi_device(var, config)
-    dc = await cg.gpio_pin_expression(config[CONF_DC_PIN])
-    cg.add(var.set_dc_pin(dc))
+
+    bus = INTERFACES[config[CONF_INTERFACE]].new()
+    if config[CONF_INTERFACE] == "SPI":
+        await spi.register_spi_device(bus, config)
+        dc = await cg.gpio_pin_expression(config[CONF_DC_PIN])
+        cg.add(bus.set_dc_pin(dc))
+    cg.add(var.set_interface(bus))
+
     if CONF_COLOR_ORDER in config:
         cg.add(var.set_color_order(COLOR_ORDERS[config[CONF_COLOR_ORDER]]))
     if CONF_TRANSFORM in config:
@@ -200,12 +201,10 @@ async def to_code(config):
 
     rhs = None
     if config[CONF_COLOR_PALETTE] == "GRAYSCALE":
-        cg.add(var.set_buffer_color_mode(ColorMode.BITS_8_INDEXED))
         rhs = []
         for x in range(256):
             rhs.extend([HexInt(x), HexInt(x), HexInt(x)])
     elif config[CONF_COLOR_PALETTE] == "IMAGE_ADAPTIVE":
-        cg.add(var.set_buffer_color_mode(ColorMode.BITS_8_INDEXED))
         from PIL import Image
 
         def load_image(filename):
@@ -234,8 +233,6 @@ async def to_code(config):
         palette = converted.getpalette()
         assert len(palette) == 256 * 3
         rhs = palette
-    else:
-        cg.add(var.set_buffer_color_mode(ColorMode.BITS_16))
 
     if rhs is not None:
         prog_arr = cg.progmem_array(config[CONF_RAW_DATA_ID], rhs)

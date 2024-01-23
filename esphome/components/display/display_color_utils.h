@@ -14,7 +14,7 @@ enum ColorOrder : uint8_t { COLOR_ORDER_RGB = 0, COLOR_ORDER_BGR = 1, COLOR_ORDE
  * FF FFFF: color structure in bits
  */
 
-enum ColorBitness : uint8_t {
+enum ColorBitness : uint16_t {
   COLOR_BITNESS_888 = 0x1318,
   COLOR_BITNESS_666 = 0x1312,
   COLOR_BITNESS_565 = 0x1210,
@@ -31,6 +31,12 @@ static const uint16_t COLOR_BITNESS_INDEXED = 0x0080;
 static const uint16_t COLOR_BITNESS_BYTES = 0x0700;
 static const uint16_t COLOR_BITNESS_DUMMY = 0x0800;
 static const uint16_t COLOR_BITNESS_DEVIDER = 0xF000;
+
+struct ColorBits {
+  uint8_t first_bits = 0;
+  uint8_t second_bits = 0;
+  uint8_t third_bits = 0;
+};
 
 inline static uint8_t esp_scale(uint8_t i, uint8_t scale, uint8_t max_value = 255) { return (max_value * i / scale); }
 static ColorBits get_color_bits(ColorBitness bitness) {
@@ -60,22 +66,16 @@ static ColorBits get_color_bits(ColorBitness bitness) {
   return result;
 }
 
-struct {
-  uint8_t first_bits = 0;
-  uint8_t second_bits = 0;
-  uint8_t third_bits = 0;
-} ColorBits;
-
 class ColorUtil {
  public:
   // depricated
   static Color to_color(uint32_t colorcode, ColorOrder color_order,
                         ColorBitness color_bitness = ColorBitness::COLOR_BITNESS_888, bool right_bit_aligned = true) {
-    static Color ColorUtil::to_color(colorcode, color_bitness, nullptr, color_order, right_bit_aligned);
+    return ColorUtil::to_color(colorcode, color_bitness, nullptr, color_order, right_bit_aligned);
   }
 
   static Color to_color(uint32_t colorcode, ColorBitness color_bitness, const uint8_t *palette = nullptr,
-                        ColorOrder color_order = ColorOrder.COLOR_ORDER_RGB, bool right_bit_aligned = true) {
+                        ColorOrder color_order = ColorOrder::COLOR_ORDER_RGB, bool right_bit_aligned = true) {
     if (color_bitness & COLOR_BITNESS_INDEXED) {
       return ColorUtil::index8_to_color_palette888(colorcode, palette);
     }
@@ -122,7 +122,7 @@ class ColorUtil {
   }
 
   static uint32_t from_color(Color color, ColorBitness color_bitness, const uint8_t *palette = nullptr,
-                             ColorOrder color_order = ColorOrder.COLOR_ORDER_RGB, bool right_bit_aligned = true) {
+                             ColorOrder color_order = ColorOrder::COLOR_ORDER_RGB, bool right_bit_aligned = true) {
     if (color_bitness & COLOR_BITNESS_INDEXED) {
       return ColorUtil::color_to_index8_palette888(color, palette);
     }

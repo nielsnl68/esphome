@@ -124,8 +124,8 @@ enum class ImageAlign {
   VERTICAL_ALIGNMENT = TOP | CENTER_VERTICAL | BOTTOM
 };
 
-
 enum DisplayType {
+  DISPLAY_TYPE_NONE = 0,
   DISPLAY_TYPE_BINARY = 1,
   DISPLAY_TYPE_GRAYSCALE = 2,
   DISPLAY_TYPE_COLOR = 3,
@@ -171,6 +171,7 @@ class BaseFont {
 
 class Display : public PollingComponent {
  public:
+  void update() override; 
   void set_dimensions(int16_t width, int16_t height) {
     this->height_ = height;
     this->width_ = width;
@@ -181,14 +182,14 @@ class Display : public PollingComponent {
   }
 
   /// Get the width of the display in pixels with rotation applied.
-  int get_width();
+  virtual int get_width();
   /// Get the height of the display in pixels with rotation applied.
-  int get_height();
+  virtual int get_height();
 
   /// Get the native display width in pixels.
   int get_native_width() { return this->width_; }
   /// Get the native display height in pixels.
-  int get_native_height() { return this->heigth_; }
+  int get_native_height() { return this->height_; }
 
   /// software method to set the display rotation.
   void set_rotation(DisplayRotation rotation) { this->rotation_ = rotation; }
@@ -198,7 +199,7 @@ class Display : public PollingComponent {
   void set_auto_clear(bool auto_clear_enabled) { this->auto_clear_enabled_ = auto_clear_enabled; }
 
   /// Deprecated
-  virtual DisplayType get_display_type(){ return };
+  virtual DisplayType get_display_type() { return DISPLAY_TYPE_NONE; };
 
   /// Fill the entire screen with the given color.
   virtual void fill(Color color);

@@ -86,36 +86,40 @@ void HOT Display::line(int x1, int y1, int x2, int y2, Color color) {
   }
 }
 
-void Display::draw_pixels_at(int x_start, int y_start, int w, int h, const uint8_t *ptr, ColorOrder order,
-                             ColorBitness bitness, bool big_endian, int x_offset, int y_offset, int x_pad) {
-  size_t line_stride = x_offset + w + x_pad;  // length of each source line in pixels
+void Display::draw_pixels_at(const uint8_t *data, int x_display, int y_display, int x_in_data, int y_in_data, int width,
+                             int height, ColorBitness bitness, int x_pad) {
+  size_t x_low = x_in_data;
+  size_t y_low = y_in_data;
+  size_t x_high = x_in_data + width - 1;
+  size_t y_high = y_in_data + height - 1;
+  size_t data_width = y_high + x_pad - 1;
+  uint8_t bytes_per_pixel = bitness.bytes_per_pixel;
+  uint8_t devider = bitness.pixel_devider();
   uint32_t color_value;
-  for (int y = 0; y != h; y++) {
-    size_t source_idx = (y_offset + y) * line_stride + x_offset;
-    size_t source_idx_mod;
-    for (int x = 0; x != w; x++, source_idx++) {
-      switch (bitness) {
-        default:
-          color_value = ptr[source_idx];
-          break;
-        case COLOR_BITNESS_565:
-          source_idx_mod = source_idx * 2;
-          if (big_endian) {
-            color_value = (ptr[source_idx_mod] << 8) + ptr[source_idx_mod + 1];
-          } else {
-            color_value = ptr[source_idx_mod] + (ptr[source_idx_mod + 1] << 8);
-          }
-          break;
-        case COLOR_BITNESS_888:
-          source_idx_mod = source_idx * 3;
-          if (big_endian) {
-            color_value = (ptr[source_idx_mod + 0] << 16) + (ptr[source_idx_mod + 1] << 8) + ptr[source_idx_mod + 2];
-          } else {
-            color_value = ptr[source_idx_mod + 0] + (ptr[source_idx_mod + 1] << 8) + (ptr[source_idx_mod + 2] << 16);
-          }
-          break;
+  uint32_t x_start = x_display;
+  uint32_t x_end = x_display + width - 1;
+  uint32_t y_end = y_display + height - 1;
+
+  if (devider > 1) {
+    x_low = (x_low - (x_low % devider)) / devider;
+    x_high = (x_high + (devider - (x_high % devider))) / devider;
+    data_width = (data_width + (devider - (data_width % devider))) / devider;
+  }
+
+  data_width *= bytes_per_pixel;
+  size_t start_pos = (y_low * data_width) + x_low;
+  const uint8_t *addr = data + start_pos;
+  size_t view_width = (x_high - x_low + 1) * bytes_per_pixel;
+
+  while (true) {
+    memcpy((void *) &color_value, (const void *) addr, bytes_per_pixel);
+    for (auto buf_part = 0; buf_part < bitness.pixel_devider(); buf_part++) {
+      this->draw_pixel_at(x_start, y_display, ColorUtil::to_color(color_value, bitness, nullptr, buf_part));
+      if (++x_start == x_end) {
+        x_start = x_display;
+        if (++y_display == y_end)
+          return;
       }
-      this->draw_pixel_at(x + x_start, y + y_start, ColorUtil::to_color(color_value, order, bitness));
     }
   }
 }

@@ -218,29 +218,36 @@ class Display : public PollingComponent {
    * in order to optimise the procedure.
    * The parameters describe a rectangular block of pixels, potentially within a larger buffer.
    *
-   * \param x_start The starting destination x position
-   * \param y_start The starting destination y position
-   * \param w the width of the pixel block
-   * \param h the height of the pixel block
-   * \param ptr A pointer to the start of the data to be copied
-   * \param order The ordering of the colors
+   * \param x_display The starting destination x position
+   * \param y_display The starting destination y position
+   * \param width the width of the pixel block
+   * \param height the height of the pixel block
+   * \param data A pointer to the start of the data to be copied
    * \param bitness Defines the number of bits and their format for each pixel
-   * \param big_endian True if 16 bit values are stored big-endian
-   * \param x_offset The initial x-offset into the source buffer.
-   * \param y_offset The initial y-offset into the source buffer.
+   * \param x_in_data The initial x-offset into the source buffer.
+   * \param y_in_data The initial y-offset into the source buffer.
    * \param x_pad How many pixels are in each line after the end of the pixels to be copied.
    *
    * The length of each source buffer line (stride) will be x_offset + w + x_pad.
    */
-  virtual void draw_pixels_at(int x_start, int y_start, int w, int h, const uint8_t *ptr, ColorOrder order,
-                              ColorBitness bitness, bool big_endian, int x_offset, int y_offset, int x_pad);
+
+  virtual void draw_pixels_at(const uint8_t *data, int x_display, int y_display, int x_in_data, int y_in_data,
+                              int width, int height, ColorBitness bitness, int x_pad = 0);
 
   /// Convenience overload for base case where the pixels are packed into the buffer with no gaps (e.g. suits LVGL.)
   void draw_pixels_at(int x_start, int y_start, int w, int h, const uint8_t *ptr, ColorOrder order,
                       ColorBitness bitness, bool big_endian) {
-    this->draw_pixels_at(x_start, y_start, w, h, ptr, order, bitness, big_endian, 0, 0, 0);
+    bitness.color_order = order;
+    bitness.little_endian = !big_endian;
+    this->draw_pixels_at(ptr, x_start, y_start, 0, 0, w, h, bitness, 0);
   }
-
+  // #depricated
+  void draw_pixels_at(int x_start, int y_start, int w, int h, const uint8_t *ptr, ColorOrder order,
+                      ColorBitness bitness, bool big_endian, int x_offset, int y_offset, int x_pad){
+    bitness.color_order = order;
+    bitness.little_endian = !big_endian;
+    this->draw_pixels_at(ptr, x_start, y_start, x_offset, y_offset, w, h, bitness, x_pad);
+  }
   /// Draw a straight line from the point [x1,y1] to [x2,y2] with the given color.
   void line(int x1, int y1, int x2, int y2, Color color = COLOR_ON);
 

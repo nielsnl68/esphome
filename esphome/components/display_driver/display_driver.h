@@ -82,8 +82,8 @@ class DisplayDriver : public Display {
   }
 
   bool get_18bit_mode() { return this->display_bitness_ == ColorBitness::COLOR_BITNESS_666; }
-  void set_color_order(ColorOrder color_order) { this->color_order_ = color_order; }
-  ColorOrder gset_color_order() { return this->color_order_; }
+  void set_color_order(ColorOrder color_order) { this->display_bitness_.color_order = color_order; }
+  ColorOrder gset_color_order() { return (ColorOrder) this->display_bitness_.color_order; }
 
   void set_swap_xy(bool swap_xy) { this->swap_xy_ = swap_xy; }
   void set_mirror_x(bool mirror_x) { this->mirror_x_ = mirror_x; }
@@ -98,15 +98,19 @@ class DisplayDriver : public Display {
   void setup() override;
 
   void draw_pixel_at(int x, int y, Color color) override;
-  void draw_pixels_at(int x_start, int y_start, int w, int h, const uint8_t *ptr, ColorOrder order,
-                      ColorBitness bitness, bool big_endian, int x_offset, int y_offset, int x_pad) override;
+  void draw_pixels_at(const uint8_t *data, int x_display, int y_display, int x_in_data, int y_in_data, int width, int height,
+                      ColorBitness bitness, int x_pad) override;
+
+  bool is_buffered() { return (this->buffer_ != nullptr); }
 
  protected:
   virtual void buffer_pixel_at(int x, int y, Color color);
+  bool display_buffer_(const uint8_t *data, int x_display, int y_display, int x_in_data, int y_in_data, int width, int height,
+                       ColorBitness bitness, int x_pad);
 
   virtual void setup_pins();
   virtual void setup_lcd();
-  virtual void setup_buffer();
+  virtual bool setup_buffer();
 
   void display_buffer() override;
 
@@ -132,7 +136,6 @@ class DisplayDriver : public Display {
   GPIOPin *reset_pin_{nullptr};
 
   bool pre_invertcolors_ = false;
-  ColorOrder color_order_{};
   bool swap_xy_{};
   bool mirror_x_{};
   bool mirror_y_{};

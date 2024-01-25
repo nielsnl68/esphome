@@ -6,31 +6,92 @@ namespace display {
 enum ColorOrder : uint8_t { COLOR_ORDER_RGB = 0, COLOR_ORDER_BGR = 1, COLOR_ORDER_GRB = 2 };
 
 /**
- * the ColorDepth values tells how a pixel is stored:
- * DDDD: is the divider
- * xBBB: number of bytes per pixel
+ * the ColorDepth values tells how a pixel is stored.
+ * Each bit has his own meaning:
  * I: Indexed value
  * G: grayscale
+ * L: little endian
+ * R: right_bit_aligned
+ * xx: unused atm.
+ * BB: number of bytes per pixel
+ * DD: is the divider
  * FF FFFF: color structure in bits
  */
 
-enum ColorBitness : uint16_t {
-  COLOR_BITNESS_888 = 0x1318,
-  COLOR_BITNESS_666 = 0x1312,
-  COLOR_BITNESS_565 = 0x1210,
-  COLOR_BITNESS_332 = 0x1108,
-  COLOR_BITNESS_8I = 0x1188,
-  COLOR_BITNESS_8 = 0x1148,
-  COLOR_BITNESS_4 = 0x2144,
-  COLOR_BITNESS_2 = 0x4142,
-  COLOR_BITNESS_1 = 0x8101,
+struct ColorBitness {
+  static const uint16_t COLOR_BITS_888 = 0x0018;
+  static const uint16_t COLOR_BITS_666 = 0x0012;
+  static const uint16_t COLOR_BITS_565 = 0x0010;
+  static const uint16_t COLOR_BITS_332 = 0x0008;
+
+  static const uint16_t COLOR_BITNESS_888 = 0x0318;
+  static const uint16_t COLOR_BITNESS_888L = COLOR_BITNESS_888 | 0x2000;
+
+  static const uint16_t COLOR_BITNESS_666 = 0x0312;
+  static const uint16_t COLOR_BITNESS_666L = COLOR_BITNESS_666 | 0x2000;
+  static const uint16_t COLOR_BITNESS_666R = COLOR_BITNESS_666 | 0x1000;
+  static const uint16_t COLOR_BITNESS_666RL = COLOR_BITNESS_666R | 0x2000;
+
+  static const uint16_t COLOR_BITNESS_565 = 0x0210;
+  static const uint16_t COLOR_BITNESS_565L = COLOR_BITNESS_565 | 0x2000;
+  static const uint16_t COLOR_BITNESS_565R = 0x0310 | 0x1000;
+  static const uint16_t COLOR_BITNESS_565RL = COLOR_BITNESS_565R | 0x2000;
+
+  static const uint16_t COLOR_BITNESS_332 = 0x0108;
+
+  static const uint16_t COLOR_BITNESS_8I = 0x8108;
+  static const uint16_t COLOR_BITNESS_8G = 0x4108;
+  static const uint16_t COLOR_BITNESS_4G = 0x4144;
+  static const uint16_t COLOR_BITNESS_2G = 0x4182;
+  static const uint16_t COLOR_BITNESS_1G = 0x41C1;
+
+  union {
+    struct {
+      uint16_t color_order : 2;
+      uint16_t little_endian : 1;
+      uint16_t right_aligned : 1;
+      uint16_t indexed : 1;
+      uint16_t grayscale : 1;
+      uint16_t bytes_per_pixel : 2;
+      uint16_t devider : 2;
+      uint16_t bits_per_pixel : 6;
+    };
+    uint16_t raw_16 = 0;
+  };
+  inline ColorBitness() ALWAYS_INLINE : raw_16(0) {}              // NOLINT
+  inline ColorBitness(uint16_t bt) ALWAYS_INLINE : raw_16(bt) {}  // NOLINT
+  inline ColorBitness(uint16_t bt, bool gs, bool idx, bool ra = false, bool le = false,
+                      uint8_t co = ColorOrder::COLOR_ORDER_RGB) ALWAYS_INLINE : raw_16(bt) {
+    grayscale = gs;
+    indexed = idx;
+    little_endian = le;
+    right_aligned = ra;
+    color_order = co;
+  }                                                  // NOLINT
+  ColorBitness operator=(const ColorBitness &rhs) {  // NOLINT
+    this->raw_16 = (this->raw_16 & 0xf000) & (rhs.raw_16 & 0x0FFF);
+    return *this;
+  }
+  ColorBitness operator=(uint16_t colorbitmess) {  // NOLINT
+    this->raw_16 = (this->raw_16 & 0xf000) & (colorbitmess & 0x0FFF);
+    return *this;
+  }
+
+  inline bool operator==(const ColorBitness &rhs) {  // NOLINT
+    return this->raw_16 == rhs.raw_16;
+  }
+  inline bool operator==(uint16_t colorbitmess) {  // NOLINT
+    return this->raw_16 == colorbitmess;
+  }
+  inline bool operator!=(const ColorBitness &rhs) {  // NOLINT
+    return this->raw_16 != rhs.raw_16;
+  }
+  inline bool operator!=(uint32_t colorbitmess) {  // NOLINT
+    return this->raw_16 != colorbitmess;
+  }
+
+  inline uint8_t pixel_devider() { return (uint8_t) 1 << devider; }
 };
-static const uint16_t COLOR_BITNESS_COLOR_BITS = 0x003F;
-static const uint16_t COLOR_BITNESS_GRAYSCALE = 0x0040;
-static const uint16_t COLOR_BITNESS_INDEXED = 0x0080;
-static const uint16_t COLOR_BITNESS_BYTES = 0x0700;
-static const uint16_t COLOR_BITNESS_DUMMY = 0x0800;
-static const uint16_t COLOR_BITNESS_DEVIDER = 0xF000;
 
 struct ColorBits {
   uint8_t first_bits = 0;
@@ -39,31 +100,28 @@ struct ColorBits {
 };
 
 inline static uint8_t esp_scale(uint8_t i, uint8_t scale, uint8_t max_value = 255) { return (max_value * i / scale); }
-inline static uint8_t bits_per_pixel(ColorBitness bitness) { return (uint8_t) bitness & 0x3f; }
-inline static uint8_t bytes_per_pixel(ColorBitness bitness) { return (uint8_t) bitness >> 16; }
-inline static uint8_t pixel_devider(ColorBitness bitness) { return (uint8_t) bitness >> 24; }
 
 class ColorUtil {
  public:
   static ColorBits get_color_bits(ColorBitness bitness) {
     ColorBits result;
-    switch (bitness) {
-      case COLOR_BITNESS_888:
+    switch (bitness.bits_per_pixel) {
+      case ColorBitness::COLOR_BITS_888:
         result.first_bits = 8;
         result.second_bits = 8;
         result.third_bits = 8;
         break;
-      case COLOR_BITNESS_666:
+      case ColorBitness::COLOR_BITS_666:
         result.first_bits = 6;
         result.second_bits = 6;
         result.third_bits = 6;
         break;
-      case COLOR_BITNESS_565:
+      case ColorBitness::COLOR_BITS_565:
         result.first_bits = 5;
         result.second_bits = 6;
         result.third_bits = 5;
         break;
-      case COLOR_BITNESS_4:
+      case ColorBitness::COLOR_BITS_332:
         result.first_bits = 3;
         result.second_bits = 3;
         result.third_bits = 2;
@@ -74,48 +132,55 @@ class ColorUtil {
 
   // depricated
   static Color to_color(uint32_t colorcode, ColorOrder color_order,
-                        ColorBitness color_bitness = ColorBitness::COLOR_BITNESS_888, bool right_bit_aligned = true) {
-    return ColorUtil::to_color(colorcode, color_bitness, nullptr, color_order, right_bit_aligned);
+                        ColorBitness bitness = ColorBitness::COLOR_BITNESS_888, bool right_bit_aligned = true) {
+    bitness.right_aligned = right_bit_aligned;
+    bitness.color_order = color_order;
+
+    return ColorUtil::to_color(colorcode, bitness, nullptr);
   }
 
-  static Color to_color(uint32_t colorcode, ColorBitness color_bitness, const uint8_t *palette = nullptr,
-                        ColorOrder color_order = ColorOrder::COLOR_ORDER_RGB, bool right_bit_aligned = true,
-                        bool big_ending = true) {
+  static Color to_color(uint32_t colorcode, ColorBitness bitness, const uint8_t *palette = nullptr, uint8_t position = 0) {
     Color color_return = Color::BLACK;
-    
-    if (color_bitness & COLOR_BITNESS_INDEXED) {
+    if (bitness.devider>1) {
+      if (bitness.little_endian)
+        position = 7 - (position % bitness.pixel_devider());
+      uint8_t pixel_pos = (position % bitness.pixel_devider()) * (8 / bitness.pixel_devider());
+      uint8_t mask = ((1 << (0x10 >> bitness.devider)) - 1) << pixel_pos;
+      colorcode = (colorcode & mask) >> pixel_pos;
+    }
+
+    if (bitness.indexed) {
       return ColorUtil::index8_to_color_palette888(colorcode, palette);
     }
-    if (color_bitness & COLOR_BITNESS_GRAYSCALE) {
+    if (bitness.grayscale) {
       return color_return.fade_to_white(
-          esp_scale(bits_per_pixel(color_bitness) & (color_bitness - 1), bits_per_pixel(color_bitness)));
+          esp_scale(colorcode & (bitness.pixel_devider() - 1), bitness.pixel_devider()));
     }
 
     uint8_t first_color, second_color, third_color;
-    ColorBits bits = get_color_bits(color_bitness);
-    if (!big_ending && bytes_per_pixel(color_bitness) > 1) {
-      if (bytes_per_pixel(color_bitness) == 2) {
+    ColorBits bits = get_color_bits(bitness);
+
+    if (bitness.little_endian && bitness.bytes_per_pixel > 1) {
+      if (bitness.bytes_per_pixel == 2) {
         colorcode = (colorcode & 0xff00 >> 8) + (colorcode & 0x00ff << 8);
       } else {
         colorcode = (colorcode & 0xff0000 >> 16) + (colorcode & 0x0000ff << 16) + (colorcode & 0x00ff00);
       }
     }
 
-    first_color = right_bit_aligned
-                      ? esp_scale(((colorcode >> (bits.second_bits + bits.third_bits)) & ((1 << bits.first_bits) - 1)),
-                                  ((1 << bits.first_bits) - 1))
-                      : esp_scale(((colorcode >> 16) & 0xFF), (1 << bits.first_bits) - 1);
+    if (bitness.right_aligned) {
+      first_color = esp_scale(((colorcode >> (bits.second_bits + bits.third_bits)) & ((1 << bits.first_bits) - 1)),
+                              ((1 << bits.first_bits) - 1));
+      second_color =
+          esp_scale(((colorcode >> bits.third_bits) & ((1 << bits.second_bits) - 1)), ((1 << bits.second_bits) - 1));
+      third_color = esp_scale(((colorcode >> 0) & ((1 << bits.third_bits) - 1)), ((1 << bits.third_bits) - 1));
+    } else {
+      first_color = esp_scale(((colorcode >> 16) & 0xFF), (1 << bits.first_bits) - 1);
+      second_color = esp_scale(((colorcode >> 8) & 0xFF), ((1 << bits.second_bits) - 1));
+      third_color = esp_scale(((colorcode >> 0) & 0xFF), (1 << bits.third_bits) - 1);
+    }
 
-    second_color = right_bit_aligned ? esp_scale(((colorcode >> bits.third_bits) & ((1 << bits.second_bits) - 1)),
-                                                 ((1 << bits.second_bits) - 1))
-                                     : esp_scale(((colorcode >> 8) & 0xFF), ((1 << bits.second_bits) - 1));
-
-    third_color = right_bit_aligned
-                      ? esp_scale(((colorcode >> 0) & ((1 << bits.third_bits) - 1)), ((1 << bits.third_bits) - 1))
-                      : esp_scale(((colorcode >> 0) & 0xFF), (1 << bits.third_bits) - 1);
-
-
-    switch (color_order) {
+    switch (bitness.color_order) {
       case COLOR_ORDER_RGB:
         color_return.r = first_color;
         color_return.g = second_color;
@@ -135,25 +200,32 @@ class ColorUtil {
     return color_return;
   }
 
-  static uint32_t from_color(Color color, ColorBitness color_bitness, const uint8_t *palette = nullptr,
-                             ColorOrder color_order = ColorOrder::COLOR_ORDER_RGB, bool right_bit_aligned = true,
-                             bool big_ending = true) {
-    if (color_bitness & COLOR_BITNESS_INDEXED) {
+  static uint32_t from_color(Color color, ColorBitness bitness, const uint8_t *palette = nullptr,
+                             uint32_t old_color = 0, uint8_t position = 0) {
+    if (bitness.indexed) {
       return ColorUtil::color_to_index8_palette888(color, palette);
     }
 
-    if (color_bitness & COLOR_BITNESS_GRAYSCALE) {
-      return esp_scale(color.white, 255, bytes_per_pixel(color_bitness)-1);
+    if (bitness.grayscale) {
+      uint8_t result = esp_scale(color.white, 255, bitness.pixel_devider() - 1);
+      if (bitness.devider > 1) {
+        if (bitness.little_endian)
+          position = 7 - (position % bitness.pixel_devider());
+        uint8_t pixel_pos = (position % bitness.pixel_devider()) * (8 / bitness.pixel_devider());
+        uint8_t mask = ((1 << (0x10 >> bitness.devider)) - 1) << pixel_pos;
+        result = (old_color &  ~mask) | (result<< pixel_pos);
+      }
+      return result;
     }
 
-    ColorBits bits = get_color_bits(color_bitness);
+    ColorBits bits = get_color_bits(bitness);
     uint16_t red_color, green_color, blue_color;
     u_int32_t color_val = 0;
     red_color = esp_scale8(color.red, ((1 << bits.first_bits) - 1));
     green_color = esp_scale8(color.green, ((1 << bits.second_bits) - 1));
     blue_color = esp_scale8(color.blue, (1 << bits.third_bits) - 1);
-    if (right_bit_aligned) {
-      switch (color_order) {
+    if (bitness.right_aligned) {
+      switch (bitness.color_order) {
         case COLOR_ORDER_RGB:
           color_val = red_color << (bits.third_bits + bits.second_bits) | green_color << bits.third_bits | blue_color;
         case COLOR_ORDER_BGR:
@@ -162,7 +234,7 @@ class ColorUtil {
           color_val = green_color << (bits.third_bits + bits.first_bits) | red_color << bits.third_bits | blue_color;
       }
     } else {
-      switch (color_order) {
+      switch (bitness.color_order) {
         case COLOR_ORDER_RGB:
           color_val = red_color << 16 | green_color << 8 | blue_color;
         case COLOR_ORDER_BGR:
@@ -171,8 +243,8 @@ class ColorUtil {
           color_val = green_color << 16 | red_color << 8 | blue_color;
       }
     }
-    if (!big_ending && bytes_per_pixel(color_bitness) > 1) {
-      if (bytes_per_pixel(color_bitness) == 2) {
+    if (bitness.little_endian && bitness.bytes_per_pixel > 1) {
+      if (bitness.bytes_per_pixel == 2) {
         color_val = (color_val & 0xff00 >> 8) + (color_val & 0x00ff << 8);
       } else {
         color_val = (color_val & 0xff0000 >> 16) + (color_val & 0x0000ff << 16) + (color_val & 0x00ff00);
@@ -182,14 +254,18 @@ class ColorUtil {
   }
 
   static inline Color rgb332_to_color(uint8_t rgb332_color) {
-    return ColorUtil::to_color((uint32_t) rgb332_color, COLOR_BITNESS_332);
+    return ColorUtil::to_color((uint32_t) rgb332_color, ColorBitness::COLOR_BITNESS_332);
   }
 
   static uint8_t color_to_332(Color color, ColorOrder color_order = ColorOrder::COLOR_ORDER_RGB) {
-    return ColorUtil::from_color(color, ColorBitness::COLOR_BITNESS_332, nullptr, color_order);
+    ColorBitness cb = ColorBitness::COLOR_BITNESS_332;
+    cb.color_order = color_order;
+    return ColorUtil::from_color(color, cb, nullptr);
   }
   static uint16_t color_to_565(Color color, ColorOrder color_order = ColorOrder::COLOR_ORDER_RGB) {
-    return ColorUtil::from_color(color, ColorBitness::COLOR_BITNESS_565, nullptr, color_order);
+    ColorBitness cb = ColorBitness::COLOR_BITNESS_565;
+    cb.color_order = color_order;
+    return ColorUtil::from_color(color, cb, nullptr);
   }
 
   static uint32_t color_to_grayscale4(Color color) {

@@ -260,6 +260,10 @@ void DisplayDriver::display_buffer() {
 // return true when the window can be set, orherwise return false.
 
 bool DisplayDriver::set_addr_window(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
+  x1 += this->x_shift_;
+  x2 += this->x_shift_;
+  y1 += this->y_shift_;
+  y2 += this->y_shift_;
   this->bus_->send_command(ILI9XXX_CASET);
   this->bus_->send_data(x1 >> 8);
   this->bus_->send_data(x1 & 0xFF);

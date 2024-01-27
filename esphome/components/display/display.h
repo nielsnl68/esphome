@@ -176,9 +176,9 @@ class Display : public PollingComponent {
     this->height_ = height;
     this->width_ = width;
   }
-  void set_offsets(int16_t offset_x, int16_t offset_y) {
-    this->offset_x_ = offset_x;
-    this->offset_y_ = offset_y;
+  void set_shift_position(int16_t x_shift, int16_t y_shift) {
+    this->x_shift_ = x_shift;
+    this->y_shift_ = y_shift;
   }
 
   /// Get the width of the display in pixels with rotation applied.
@@ -228,7 +228,7 @@ class Display : public PollingComponent {
    * \param y_in_data The initial y-offset into the source buffer.
    * \param x_pad How many pixels are in each line after the end of the pixels to be copied.
    *
-   * The length of each source buffer line (stride) will be x_offset + w + x_pad.
+   * The length of each source buffer line (stride) will be x_in_data + w + x_pad.
    */
 
   virtual void draw_pixels_at(const uint8_t *data, int x_display, int y_display, int x_in_data, int y_in_data,
@@ -580,8 +580,8 @@ class Display : public PollingComponent {
 
   uint16_t width_{0};
   uint16_t height_{0};
-  int16_t offset_x_{0};
-  int16_t offset_y_{0};
+  int16_t x_shift_{0};
+  int16_t y_shift_{0};
 
   bool processing_update_ = false;
   bool needs_update_ = false;

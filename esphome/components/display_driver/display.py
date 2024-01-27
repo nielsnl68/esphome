@@ -21,8 +21,6 @@ from esphome.const import (
     CONF_MIRROR_Y,
     CONF_SWAP_XY,
     CONF_COLOR_ORDER,
-    CONF_OFFSET_HEIGHT,
-    CONF_OFFSET_WIDTH,
     CONF_TRANSFORM,
     CONF_INVERT_COLORS,
     CONF_TYPE,
@@ -42,7 +40,8 @@ CODEOWNERS = ["@nielsnl68", "@clydebarrow"]
 CONF_COLOR_PALETTE_IMAGES = "color_palette_images"
 CONF_INTERFACE = "interface"
 CONF_18BIT_MODE = "18bit_mode"
-
+CONF_X_SHIFT = "x_shift"
+CONF_Y_SHIFT = "y_shift"
 
 DisplayDriver = display_ns.class_(
     "DisplayDriver",
@@ -144,10 +143,10 @@ CONFIG_SCHEMA = cv.All(
                 cv.dimensions,
                 cv.Schema(
                     {
-                        cv.Required(CONF_WIDTH): cv.int_,
-                        cv.Required(CONF_HEIGHT): cv.int_,
-                        cv.Optional(CONF_OFFSET_HEIGHT, default=0): cv.int_,
-                        cv.Optional(CONF_OFFSET_WIDTH, default=0): cv.int_,
+                        cv.Required(CONF_WIDTH): cv.positive_int,
+                        cv.Required(CONF_HEIGHT): cv.positive_int,
+                        cv.Optional(CONF_X_SHIFT, default=0): cv.positive_int,
+                        cv.Optional(CONF_Y_SHIFT, default=0): cv.positive_int,
                     }
                 ),
             ),
@@ -217,8 +216,8 @@ async def to_code(config):
         if isinstance(dimensions, dict):
             cg.add(var.set_dimensions(dimensions[CONF_WIDTH], dimensions[CONF_HEIGHT]))
             cg.add(
-                var.set_offsets(
-                    dimensions[CONF_OFFSET_WIDTH], dimensions[CONF_OFFSET_HEIGHT]
+                var.set_shift_position(
+                    dimensions[CONF_X_SHIFT], dimensions[CONF_Y_SHIFT]
                 )
             )
         else:

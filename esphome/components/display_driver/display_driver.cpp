@@ -167,35 +167,38 @@ void DisplayDriver::allocate_buffer_(uint32_t buffer_length) {
   this->buffer_ = allocator.allocate(buffer_length);
 }
 
-void dump_bridness(std::string title, ColorBitness bridness) {
+void dump_bridness(std::string title, ColorBitness bitness) {
   std::string depth;
-  switch (bridness.raw_16) {
-    case ColorBitness::COLOR_BITNESS_1G:
+  switch (bitness.bits_per_pixel) {
+    case 1:
       depth = "Monochrome";
       break;
-    case ColorBitness::COLOR_BITNESS_2G:
+    case 2:
       depth = "4 colors/grayscale";
       break;
-    case ColorBitness::COLOR_BITNESS_4G:
+    case 4:
       depth = "16 colors/grayscale";
       break;
-    case ColorBitness::COLOR_BITNESS_8G:
-      depth = "256 colors/grayscale";
+    case 8:
+      if (bitness.indexed) {
+        depth = "8bit Indexed";
+      } else if (bitness.grayscale) {
+        depth = "256 colors/grayscale";
+      } else {
+        depth = "8bit 332 mode";
+      }
       break;
-    case ColorBitness::COLOR_BITNESS_8I:
-      depth = "8bit Indexed";
-      break;
-    case ColorBitness::COLOR_BITNESS_565:
+    case 16:
       depth = "16bit 565 mode";
       break;
-    case ColorBitness::COLOR_BITNESS_666:
+    case 18:
       depth = "18bit 666 mode";
       break;
-    case ColorBitness::COLOR_BITNESS_888:
+    case 24:
       depth = "24bit 888 mode";
       break;
     default:
-      depth = "8bit 332 mode";
+      depth = "Unknown color depth.";
       break;
   }
   ESP_LOGCONFIG(TAG, title.c_str(), depth.c_str());
@@ -203,8 +206,8 @@ void dump_bridness(std::string title, ColorBitness bridness) {
 
 void DisplayDriver::dump_config() {
   LOG_DISPLAY("", "Display Driver:", this);
-  ESP_LOGCONFIG(TAG, "  Width Offset: %u", this->offset_x_);
-  ESP_LOGCONFIG(TAG, "  Height Offset: %u", this->offset_y_);
+  ESP_LOGCONFIG(TAG, "  Shift X: %u", this->x_shift_);
+  ESP_LOGCONFIG(TAG, "  Shift Y: %u", this->y_shift_);
   if (this->buffer_ != nullptr) {
     dump_bridness("  Buffer Color Dept: %s", this->buffer_bitness_);
   }

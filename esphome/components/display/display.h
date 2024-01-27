@@ -580,8 +580,8 @@ class Display : public PollingComponent {
 
   uint16_t width_{0};
   uint16_t height_{0};
-  int16_t x_shift_{0};
-  int16_t y_shift_{0};
+  uint16_t x_shift_{0};
+  uint16_t y_shift_{0};
 
   bool processing_update_ = false;
   bool needs_update_ = false;

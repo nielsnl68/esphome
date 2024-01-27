@@ -12,6 +12,9 @@ from esphome.const import (
     CONF_FROM,
     CONF_TO,
     CONF_TRIGGER_ID,
+    CONF_WIDTH,
+    CONF_HEIGHT,
+    CONF_DIMENSIONS,
 )
 from esphome.core import coroutine_with_priority
 
@@ -38,6 +41,9 @@ DisplayOnPageChangeTrigger = display_ns.class_(
 )
 
 CONF_ON_PAGE_CHANGE = "on_page_change"
+CONF_X_SHIFT = "x_shift"
+CONF_Y_SHIFT = "y_shift"
+
 
 DISPLAY_ROTATIONS = {
     0: display_ns.DISPLAY_ROTATION_0_DEGREES,
@@ -63,6 +69,17 @@ BASIC_DISPLAY_SCHEMA = cv.Schema(
 FULL_DISPLAY_SCHEMA = BASIC_DISPLAY_SCHEMA.extend(
     {
         cv.Optional(CONF_ROTATION): validate_rotation,
+        cv.Optional(CONF_DIMENSIONS): cv.Any(
+            cv.dimensions,
+            cv.Schema(
+                {
+                    cv.Required(CONF_WIDTH): cv.positive_int,
+                    cv.Required(CONF_HEIGHT): cv.positive_int,
+                    cv.Optional(CONF_X_SHIFT, default=0): cv.positive_int,
+                    cv.Optional(CONF_Y_SHIFT, default=0): cv.positive_int,
+                }
+            ),
+        ),
         cv.Optional(CONF_PAGES): cv.All(
             cv.ensure_list(
                 {
@@ -89,6 +106,19 @@ FULL_DISPLAY_SCHEMA = BASIC_DISPLAY_SCHEMA.extend(
 async def setup_display_core_(var, config):
     if CONF_ROTATION in config:
         cg.add(var.set_rotation(DISPLAY_ROTATIONS[config[CONF_ROTATION]]))
+
+    if CONF_DIMENSIONS in config:
+        dimensions = config[CONF_DIMENSIONS]
+        if isinstance(dimensions, dict):
+            cg.add(var.set_dimensions(dimensions[CONF_WIDTH], dimensions[CONF_HEIGHT]))
+            cg.add(
+                var.set_shift_position(
+                    dimensions[CONF_X_SHIFT], dimensions[CONF_Y_SHIFT]
+                )
+            )
+        else:
+            (width, height) = dimensions
+            cg.add(var.set_dimensions(width, height))
 
     if CONF_AUTO_CLEAR_ENABLED in config:
         cg.add(var.set_auto_clear(config[CONF_AUTO_CLEAR_ENABLED]))

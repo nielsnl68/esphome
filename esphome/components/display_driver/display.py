@@ -10,12 +10,8 @@ from esphome.const import (
     CONF_ID,
     CONF_LAMBDA,
     CONF_MODEL,
-    CONF_RAW_DATA_ID,
     CONF_PAGES,
     CONF_RESET_PIN,
-    CONF_DIMENSIONS,
-    CONF_WIDTH,
-    CONF_HEIGHT,
     CONF_ROTATION,
     CONF_MIRROR_X,
     CONF_MIRROR_Y,
@@ -40,8 +36,7 @@ CODEOWNERS = ["@nielsnl68", "@clydebarrow"]
 CONF_COLOR_PALETTE_IMAGES = "color_palette_images"
 CONF_INTERFACE = "interface"
 CONF_18BIT_MODE = "18bit_mode"
-CONF_X_SHIFT = "x_shift"
-CONF_Y_SHIFT = "y_shift"
+
 
 DisplayDriver = display_ns.class_(
     "DisplayDriver",
@@ -79,6 +74,7 @@ COLOR_ORDERS = {
 }
 
 COLOR_PALETTE = cv.one_of("NONE", "GRAYSCALE", "IMAGE_ADAPTIVE")
+CONF_COLOR_PALETTE_ID = "color_palette_id"
 
 
 def _validate(config):
@@ -139,20 +135,9 @@ CONFIG_SCHEMA = cv.All(
             cv.GenerateID(): cv.declare_id(DisplayDriver),
             cv.Required(CONF_MODEL): cv.enum(MODELS, upper=True, space="_"),
             cv.Required(CONF_INTERFACE): INTERFACE_SCHEMA,
-            cv.Optional(CONF_DIMENSIONS): cv.Any(
-                cv.dimensions,
-                cv.Schema(
-                    {
-                        cv.Required(CONF_WIDTH): cv.positive_int,
-                        cv.Required(CONF_HEIGHT): cv.positive_int,
-                        cv.Optional(CONF_X_SHIFT, default=0): cv.positive_int,
-                        cv.Optional(CONF_Y_SHIFT, default=0): cv.positive_int,
-                    }
-                ),
-            ),
             cv.Optional(CONF_RESET_PIN): pins.gpio_output_pin_schema,
             cv.Optional(CONF_COLOR_PALETTE, default="NONE"): COLOR_PALETTE,
-            cv.GenerateID(CONF_RAW_DATA_ID): cv.declare_id(cg.uint8),
+            cv.GenerateID(CONF_COLOR_PALETTE_ID): cv.declare_id(cg.uint8),
             cv.Optional(CONF_COLOR_PALETTE_IMAGES, default=[]): cv.ensure_list(
                 cv.file_
             ),
@@ -211,19 +196,6 @@ async def to_code(config):
         reset = await cg.gpio_pin_expression(config[CONF_RESET_PIN])
         cg.add(var.set_reset_pin(reset))
 
-    if CONF_DIMENSIONS in config:
-        dimensions = config[CONF_DIMENSIONS]
-        if isinstance(dimensions, dict):
-            cg.add(var.set_dimensions(dimensions[CONF_WIDTH], dimensions[CONF_HEIGHT]))
-            cg.add(
-                var.set_shift_position(
-                    dimensions[CONF_X_SHIFT], dimensions[CONF_Y_SHIFT]
-                )
-            )
-        else:
-            (width, height) = dimensions
-            cg.add(var.set_dimensions(width, height))
-
     rhs = None
     if config[CONF_COLOR_PALETTE] == "GRAYSCALE":
         rhs = []
@@ -260,7 +232,7 @@ async def to_code(config):
         rhs = palette
 
     if rhs is not None:
-        prog_arr = cg.progmem_array(config[CONF_RAW_DATA_ID], rhs)
+        prog_arr = cg.progmem_array(config[CONF_COLOR_PALETTE_ID], rhs)
         cg.add(var.set_palette(prog_arr))
 
     if CONF_INVERT_COLORS in config:

@@ -120,12 +120,12 @@ void DisplayDriver::setup_lcd() {
 // should return the total size: return this->width_ * this->height_ * 2 // 16bit color
 // values per bit is huge
 size_t DisplayDriver::get_buffer_length_() {
-  size_t d_width = this->width_;
+  size_t d_width = this->padding_.w;
   uint8_t devider = this->buffer_bitness_.pixel_devider();
 
   d_width = (d_width + (devider - (d_width % devider))) / devider;
 
-  return d_width * this->height_ * this->buffer_bitness_.bytes_per_pixel;
+  return d_width * this->padding_.h * this->buffer_bitness_.bytes_per_pixel;
 }
 
 bool DisplayDriver::setup_buffer() {
@@ -206,8 +206,7 @@ void dump_bridness(std::string title, ColorBitness bitness) {
 
 void DisplayDriver::dump_config() {
   LOG_DISPLAY("", "Display Driver:", this);
-  ESP_LOGCONFIG(TAG, "  Shift X: %u", this->x_shift_);
-  ESP_LOGCONFIG(TAG, "  Shift Y: %u", this->y_shift_);
+  this->padding_.info("display window:");
   if (this->buffer_ != nullptr) {
     dump_bridness("  Buffer Color Dept: %s", this->buffer_bitness_);
   }
@@ -251,8 +250,8 @@ void DisplayDriver::display_buffer() {
                             this->y_high_ - this->x_low_ + 1, this->y_high_ - this->y_low_ + 1, this->buffer_bitness_,
                             this->width_ - this->x_high_ + 1)) {
     // invalidate watermarks
-    this->x_low_ = this->width_;
-    this->y_low_ = this->height_;
+    this->x_low_ = this->padding_.w;
+    this->y_low_ = this->padding_.h;
     this->x_high_ = 0;
     this->y_high_ = 0;
   }
@@ -263,10 +262,6 @@ void DisplayDriver::display_buffer() {
 // return true when the window can be set, orherwise return false.
 
 bool DisplayDriver::set_addr_window(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
-  x1 += this->x_shift_;
-  x2 += this->x_shift_;
-  y1 += this->y_shift_;
-  y2 += this->y_shift_;
   this->bus_->send_command(ILI9XXX_CASET);
   this->bus_->send_data(x1 >> 8);
   this->bus_->send_data(x1 & 0xFF);

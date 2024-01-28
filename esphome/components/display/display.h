@@ -173,12 +173,13 @@ class Display : public PollingComponent {
  public:
   void update() override;
   void set_dimensions(int16_t width, int16_t height) {
-    this->height_ = height;
     this->width_ = width;
+    this->height_ = height;
+    this->padding_ = Rect(0, this->width_, 0, this->height_);
   }
-  void set_shift_position(int16_t x_shift, int16_t y_shift) {
-    this->x_shift_ = x_shift;
-    this->y_shift_ = y_shift;
+
+  void set_dispay_window(uint16_t x_low, uint16_t x_high, uint16_t y_low, uint16_t y_high) {
+    this->padding_ = Rect(x_low, x_high - x_low + 1, y_low, y_high - x_low + 1);
   }
 
   /// Get the width of the display in pixels with rotation applied.
@@ -243,7 +244,7 @@ class Display : public PollingComponent {
   }
   // #depricated
   void draw_pixels_at(int x_start, int y_start, int w, int h, const uint8_t *ptr, ColorOrder order,
-                      ColorBitness bitness, bool big_endian, int x_offset, int y_offset, int x_pad){
+                      ColorBitness bitness, bool big_endian, int x_offset, int y_offset, int x_pad) {
     bitness.color_order = order;
     bitness.little_endian = !big_endian;
     this->draw_pixels_at(ptr, x_start, y_start, x_offset, y_offset, w, h, bitness, x_pad);
@@ -504,7 +505,6 @@ class Display : public PollingComponent {
 
   void add_on_page_change_trigger(DisplayOnPageChangeTrigger *t) { this->on_page_change_triggers_.push_back(t); }
 
-
   /** Set the clipping rectangle for further drawing
    *
    * @param[in]  rect:       Pointer to Rect for clipping (or NULL for entire screen)
@@ -559,7 +559,7 @@ class Display : public PollingComponent {
 
   virtual void do_update_();
   void clear_clipping_();
-  virtual void display_buffer(){}
+  virtual void display_buffer() {}
 
   /**
    * This method fills a triangle using only integer variables by using a
@@ -580,8 +580,7 @@ class Display : public PollingComponent {
 
   uint16_t width_{0};
   uint16_t height_{0};
-  uint16_t x_shift_{0};
-  uint16_t y_shift_{0};
+  Rect padding_{};
 
   bool processing_update_ = false;
   bool needs_update_ = false;

@@ -41,7 +41,6 @@ CONF_COLOR_PALETTE_IMAGES = "color_palette_images"
 CONF_INTERFACE = "interface"
 CONF_18BIT_MODE = "18bit_mode"
 
-
 displayInterface = display_ns.class_("displayInterface")
 SPI_Interface = display_ns.class_("SPI_Interface", displayInterface)
 SPI16D_Interface = display_ns.class_("SPI16D_Interface", displayInterface)

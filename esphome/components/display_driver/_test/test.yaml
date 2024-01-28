@@ -32,7 +32,7 @@ spi:
 display:
   - platform: display_driver
     id: my_display
-    model: ili9341
+    model: ILI9341
     interface:
       type: SPI
       cs_pin: 5

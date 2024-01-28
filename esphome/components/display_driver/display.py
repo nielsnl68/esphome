@@ -4,6 +4,7 @@ from esphome import core, pins
 from esphome.components import display, spi, font
 from esphome.components.display import validate_rotation, display_ns
 from esphome.core import CORE, HexInt
+
 from esphome.const import (
     CONF_COLOR_PALETTE,
     CONF_DC_PIN,
@@ -21,6 +22,7 @@ from esphome.const import (
     CONF_INVERT_COLORS,
     CONF_TYPE,
 )
+from .drivers import validate_model_registry, load_display_driver, DisplayDriver
 
 DEPENDENCIES = ["spi"]
 
@@ -33,15 +35,12 @@ def AUTO_LOAD():
 
 CODEOWNERS = ["@nielsnl68", "@clydebarrow"]
 
+CONF_COLOR_PALETTE_ENUM = cv.one_of("NONE", "GRAYSCALE", "IMAGE_ADAPTIVE")
+CONF_COLOR_PALETTE_ID = "color_palette_id"
 CONF_COLOR_PALETTE_IMAGES = "color_palette_images"
 CONF_INTERFACE = "interface"
 CONF_18BIT_MODE = "18bit_mode"
 
-
-DisplayDriver = display_ns.class_(
-    "DisplayDriver",
-    display.Display,
-)
 
 displayInterface = display_ns.class_("displayInterface")
 SPI_Interface = display_ns.class_("SPI_Interface", displayInterface)
@@ -49,32 +48,11 @@ SPI16D_Interface = display_ns.class_("SPI16D_Interface", displayInterface)
 
 ColorMode = display_ns.enum("ColorMode")
 
-MODELS = {
-    "M5STACK": display_ns.class_("Display_M5Stack", DisplayDriver),
-    "M5CORE": display_ns.class_("Display_M5CORE", DisplayDriver),
-    "TFT_2.4": display_ns.class_("Display_ILI9341", DisplayDriver),
-    "TFT_2.4R": display_ns.class_("Display_ILI9342", DisplayDriver),
-    "ILI9341": display_ns.class_("Display_ILI9341", DisplayDriver),
-    "ILI9342": display_ns.class_("Display_ILI9342", DisplayDriver),
-    "ILI9481": display_ns.class_("Display_ILI9481", DisplayDriver),
-    "ILI9481-18": display_ns.class_("Display_ILI948118", DisplayDriver),
-    "ILI9486": display_ns.class_("Display_ILI9486", DisplayDriver),
-    "ILI9488": display_ns.class_("Display_ILI9488", DisplayDriver),
-    "ILI9488_A": display_ns.class_("Display_ILI9488A", DisplayDriver),
-    "ST7796": display_ns.class_("Display_ST7796", DisplayDriver),
-    "ST7789V": display_ns.class_("Display_ST7789V", DisplayDriver),
-    "S3BOX": display_ns.class_("Display_S3Box", DisplayDriver),
-    "S3BOX_LITE": display_ns.class_("Display_S3BoxLite", DisplayDriver),
-}
-
 ColorOrder = display.display_ns.enum("ColorMode")
 COLOR_ORDERS = {
     "RGB": ColorOrder.COLOR_ORDER_RGB,
     "BGR": ColorOrder.COLOR_ORDER_BGR,
 }
-
-COLOR_PALETTE = cv.one_of("NONE", "GRAYSCALE", "IMAGE_ADAPTIVE")
-CONF_COLOR_PALETTE_ID = "color_palette_id"
 
 
 def _validate(config):
@@ -124,46 +102,58 @@ INTERFACE_SCHEMA = cv.typed_schema(
         ),
     },
     default_type="SPI",
-    lower=False,
+    upper=True,
 )
 
 
 CONFIG_SCHEMA = cv.All(
     font.validate_pillow_installed,
-    display.FULL_DISPLAY_SCHEMA.extend(
-        {
-            cv.GenerateID(): cv.declare_id(DisplayDriver),
-            cv.Required(CONF_MODEL): cv.enum(MODELS, upper=True, space="_"),
-            cv.Required(CONF_INTERFACE): INTERFACE_SCHEMA,
-            cv.Optional(CONF_RESET_PIN): pins.gpio_output_pin_schema,
-            cv.Optional(CONF_COLOR_PALETTE, default="NONE"): COLOR_PALETTE,
-            cv.GenerateID(CONF_COLOR_PALETTE_ID): cv.declare_id(cg.uint8),
-            cv.Optional(CONF_COLOR_PALETTE_IMAGES, default=[]): cv.ensure_list(
-                cv.file_
-            ),
-            cv.Optional(CONF_INVERT_COLORS): cv.boolean,
-            cv.Optional(CONF_18BIT_MODE): cv.boolean,
-            cv.Optional(CONF_COLOR_ORDER): cv.one_of(*COLOR_ORDERS.keys(), upper=True),
-            cv.Exclusive(CONF_ROTATION, CONF_ROTATION): validate_rotation,
-            cv.Exclusive(CONF_TRANSFORM, CONF_ROTATION): cv.Schema(
-                {
-                    cv.Optional(CONF_SWAP_XY, default=False): cv.boolean,
-                    cv.Optional(CONF_MIRROR_X, default=False): cv.boolean,
-                    cv.Optional(CONF_MIRROR_Y, default=False): cv.boolean,
-                }
-            ),
-        }
-    ).extend(cv.polling_component_schema("1s")),
+    validate_model_registry(
+        display.FULL_DISPLAY_SCHEMA.extend(
+            {
+                cv.GenerateID(): cv.declare_id(DisplayDriver),
+                cv.Required(CONF_INTERFACE): INTERFACE_SCHEMA,
+                cv.Optional(CONF_RESET_PIN): pins.gpio_output_pin_schema,
+                cv.Optional(
+                    CONF_COLOR_PALETTE, default="NONE"
+                ): CONF_COLOR_PALETTE_ENUM,
+                cv.GenerateID(CONF_COLOR_PALETTE_ID): cv.declare_id(cg.uint8),
+                cv.Optional(CONF_COLOR_PALETTE_IMAGES, default=[]): cv.ensure_list(
+                    cv.file_
+                ),
+                cv.Optional(CONF_INVERT_COLORS): cv.boolean,
+                cv.Optional(CONF_18BIT_MODE): cv.boolean,
+                cv.Optional(CONF_COLOR_ORDER): cv.one_of(
+                    *COLOR_ORDERS.keys(), upper=True
+                ),
+                cv.Exclusive(CONF_ROTATION, CONF_ROTATION): validate_rotation,
+                cv.Exclusive(CONF_TRANSFORM, CONF_ROTATION): cv.Schema(
+                    {
+                        cv.Optional(CONF_SWAP_XY, default=False): cv.boolean,
+                        cv.Optional(CONF_MIRROR_X, default=False): cv.boolean,
+                        cv.Optional(CONF_MIRROR_Y, default=False): cv.boolean,
+                    }
+                ),
+            }
+        ).extend(cv.polling_component_schema("1s")),
+        upper=True,
+        space="_",
+    ),
     cv.has_at_most_one_key(CONF_PAGES, CONF_LAMBDA),
     _validate,
 )
 
 
 async def to_code(config):
-    rhs = MODELS[config[CONF_MODEL]].new()
+    (type_id, function_) = await load_display_driver(config[CONF_MODEL])
+
+    rhs = type_id.new()
+
     var = cg.Pvariable(config[CONF_ID], rhs)
     await display.register_display(var, config)
     bus_config = config[CONF_INTERFACE]
+
+    (config, var) = await function_(config, var)
 
     bus = cg.new_Pvariable(bus_config[CONF_BUS_ID])
     cg.add(var.set_interface(bus))

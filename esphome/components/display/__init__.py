@@ -45,10 +45,10 @@ DisplayOnPageChangeTrigger = display_ns.class_(
 CONF_ON_PAGE_CHANGE = "on_page_change"
 
 CONF_DISPLAY_WINDOW = "display_window"
-CONF_X_LOW = "x_low"
-CONF_Y_LOW = "y_low"
-CONF_X_HIGH = "x_high"
-CONF_Y_HIGH = "y_high"
+CONF_X_MIN = "x_min"
+CONF_X_MAX = "x_max"
+CONF_Y_MIN = "y_min"
+CONF_Y_MAX = "y_max"
 
 
 DISPLAY_ROTATIONS = {
@@ -81,10 +81,10 @@ FULL_DISPLAY_SCHEMA = BASIC_DISPLAY_SCHEMA.extend(
                 {
                     cv.Required(CONF_WIDTH): cv.positive_int,
                     cv.Required(CONF_HEIGHT): cv.positive_int,
-                    cv.Optional(CONF_OFFSET_WIDTH): cv.Invalid(
+                    cv.Optional(CONF_OFFSET_WIDTH): cv.invalid(
                         "This variable is depricated. use the 'display_window' variables "
                     ),
-                    cv.Optional(CONF_OFFSET_HEIGHT): cv.Invalid(
+                    cv.Optional(CONF_OFFSET_HEIGHT): cv.invalid(
                         "This variable is depricated. use the 'display_window' variables "
                     ),
                 }
@@ -92,10 +92,10 @@ FULL_DISPLAY_SCHEMA = BASIC_DISPLAY_SCHEMA.extend(
         ),
         cv.Optional(CONF_DISPLAY_WINDOW): cv.Schema(
             {
-                cv.Optional(CONF_X_LOW, default=0): cv.positive_int,
-                cv.Optional(CONF_X_HIGH, default=0): cv.positive_int,
-                cv.Optional(CONF_Y_LOW, default=0): cv.positive_int,
-                cv.Optional(CONF_Y_HIGH, default=0): cv.positive_int,
+                cv.Optional(CONF_X_MIN, default=0): cv.positive_int,
+                cv.Optional(CONF_X_MAX, default=0): cv.positive_int,
+                cv.Optional(CONF_Y_MIN, default=0): cv.positive_int,
+                cv.Optional(CONF_Y_MAX, default=0): cv.positive_int,
             }
         ),
         cv.Optional(CONF_PAGES): cv.All(
@@ -135,11 +135,11 @@ async def setup_display_core_(var, config):
     if CONF_DISPLAY_WINDOW in config:
         dimensions = config[CONF_DISPLAY_WINDOW]
         cg.add(
-            var.set_dimensions(
-                dimensions[CONF_X_LOW],
-                dimensions[CONF_X_HIGH],
-                dimensions[CONF_Y_LOW],
-                dimensions[CONF_Y_HIGH],
+            var.set_set_dispay_window(
+                dimensions[CONF_X_MIN],
+                dimensions[CONF_X_MAX],
+                dimensions[CONF_Y_MIN],
+                dimensions[CONF_Y_MAX],
             )
         )
 

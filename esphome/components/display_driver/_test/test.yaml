@@ -8,10 +8,6 @@ esphome:
   comment: "${name} - ${comment}"
   friendly_name: "${comment}"
 
-  project:
-    name: ${name}.${comment}
-    version: ${project_version}
-
 esp32:
   board: lolin_s2_mini
   framework:

@@ -120,16 +120,16 @@ struct ColorBitness {
       depth = "Unknown";
       break;
   }
-  ESP_LOGCONFIG(TAGC, "    Pixel mode: %s", depth.c_str());
+  ESP_LOGCONFIG(TAGC, "    Pixel mode   : %s", depth.c_str());
 }
 
 
   inline void info(const char *prefix = "Bitmess info:") {
     ESP_LOGCONFIG(TAGC, prefix);
-    ESP_LOGCONFIG(TAGC, "    Bitmess raw  : %04x ", raw_16);
+    ESP_LOGCONFIG(TAGC, "    Bitmess raw  : 0x%04x ", raw_16);
     pixel_mode();
     if (bytes_per_pixel > 1) {
-      ESP_LOGCONFIG(TAGC, "    Bytes p Pixel: %d byte(s)", bytes_per_pixel);
+      ESP_LOGCONFIG(TAGC, "    Bytes p Pixel: %d bytes", bytes_per_pixel);
     } else if (devider == 1) {
       ESP_LOGCONFIG(TAGC, "    Bytes p Pixel: %d byte", bytes_per_pixel);
     } else {

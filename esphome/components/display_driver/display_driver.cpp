@@ -21,8 +21,14 @@ static inline void put16_be(uint8_t *buf, uint16_t value) {
 DisplayDriver::DisplayDriver(uint8_t const *init_sequence, int16_t width, int16_t height, bool invert_colors)
     : init_sequence_{init_sequence}, pre_invertcolors_{invert_colors} {
   this->set_dimensions(width, height);
+  this->preset_init_values();
+}
+
+void DisplayDriver::preset_init_values() {
   uint8_t cmd, num_args, bits;
-  const uint8_t *addr = init_sequence;
+  const uint8_t *addr = this->init_sequence_;
+
+  this->display_bitness_.info("on preset_init_values.");
   while ((cmd = *addr++) != 0) {
     num_args = *addr++ & 0x7F;
     bits = *addr;
@@ -31,7 +37,7 @@ DisplayDriver::DisplayDriver(uint8_t const *init_sequence, int16_t width, int16_
         this->swap_xy_ = (bits & MADCTL_MV) != 0;
         this->mirror_x_ = (bits & MADCTL_MX) != 0;
         this->mirror_y_ = (bits & MADCTL_MY) != 0;
-        this->set_color_order((bits & MADCTL_BGR) ? COLOR_ORDER_BGR : COLOR_ORDER_RGB);
+        this->display_bitness_.color_order = (bits & MADCTL_BGR) ? COLOR_ORDER_BGR : COLOR_ORDER_RGB;
         break;
       }
 
@@ -46,11 +52,13 @@ DisplayDriver::DisplayDriver(uint8_t const *init_sequence, int16_t width, int16_
     }
     addr += num_args;
   }
+  this->display_bitness_.info("after preset_init_values.");
 }
 
 void DisplayDriver::setup() {
   ESP_LOGD(TAG, "Setting up the display_driver");
   if (this->bus_ == nullptr) {
+    ESP_LOGE(TAG, "Databus interface not set.");
     this->mark_failed();
     return;
   }
@@ -58,11 +66,7 @@ void DisplayDriver::setup() {
   this->bus_->setup();
 
   this->setup_lcd();
-
-  this->x_low_ = this->width_;
-  this->y_low_ = this->height_;
-  this->x_high_ = 0;
-  this->y_high_ = 0;
+  this->view_port_ = Rect();
 }
 
 void DisplayDriver::setup_pins() {
@@ -76,20 +80,40 @@ void DisplayDriver::setup_pins() {
 void DisplayDriver::reset_() {
   if (this->reset_pin_ != nullptr) {
     this->reset_pin_->digital_write(false);
-    delay(10);
+    delay(20);
     this->reset_pin_->digital_write(true);
-    delay(10);
+    delay(20);
   }
+}
+void DisplayDriver::finalize_init_values() {
+  uint8_t pix = this->display_bitness_.bits_per_pixel == ColorBitness::COLOR_BITS_666 ? 0x66 : 0x55;
+  uint8_t mad = this->display_bitness_.color_order == COLOR_ORDER_BGR ? MADCTL_BGR : MADCTL_RGB;
+  if (this->swap_xy_)
+    mad |= MADCTL_MV;
+  if (this->mirror_x_)
+    mad |= MADCTL_MX;
+  if (this->mirror_y_)
+    mad |= MADCTL_MY;
+
+  this->bus_->send_command(this->pre_invertcolors_ ? ILI9XXX_INVON : ILI9XXX_INVOFF);
+  this->bus_->send_command(ILI9XXX_MADCTL, &mad, 1);
+  this->bus_->send_command(ILI9XXX_PIXFMT, &pix, 1);
+  this->display_bitness_.color_order = MADCTL_RGB;
+  this->display_bitness_.little_endian = true;
 }
 
 void DisplayDriver::setup_lcd() {
   uint8_t cmd, x, num_args;
   const uint8_t *addr = this->init_sequence_;
+
   this->bus_->start();
+
   while ((cmd = *addr++) > 0) {
     x = *addr++;
     num_args = x & 0x7F;
-
+    if (cmd == ILI9XXX_DISPON) {
+      this->finalize_init_values();
+    }
     this->bus_->send_command(cmd, addr, num_args);
     addr += num_args;
     if (x & 0x80) {
@@ -99,162 +123,129 @@ void DisplayDriver::setup_lcd() {
     }
   }
 
-  this->bus_->send_command(this->pre_invertcolors_ ? ILI9XXX_INVON : ILI9XXX_INVOFF);
-
-  // custom x/y transform and color order
-  uint8_t mad = this->display_bitness_.color_order == COLOR_ORDER_BGR ? MADCTL_BGR : MADCTL_RGB;
-  if (this->swap_xy_)
-    mad |= MADCTL_MV;
-  if (this->mirror_x_)
-    mad |= MADCTL_MX;
-  if (this->mirror_y_)
-    mad |= MADCTL_MY;
-  this->bus_->send_command(ILI9XXX_MADCTL, &mad, 1);
-
-  mad = this->display_bitness_ == ColorBitness::COLOR_BITNESS_666 ? 0x66 : 0x55;
-  this->bus_->send_command(ILI9XXX_PIXFMT, &mad, 1);
-
   this->bus_->end();
+
+  ESP_LOGD(TAG, "done Init ");
 }
 
 // should return the total size: return this->width_ * this->height_ * 2 // 16bit color
 // values per bit is huge
-size_t DisplayDriver::get_buffer_length_() {
-  size_t d_width = this->padding_.w;
+size_t DisplayDriver::get_buffer_size_() {
+  size_t d_width = this->width_;
   uint8_t devider = this->buffer_bitness_.pixel_devider();
 
-  d_width = (d_width + (devider - (d_width % devider))) / devider;
+  d_width = ((d_width + (devider - (d_width % devider))) / devider);
 
-  return d_width * this->padding_.h * this->buffer_bitness_.bytes_per_pixel;
+  size_t size = d_width * this->height_ * this->buffer_bitness_.bytes_per_pixel;
+  return size;
 }
 
 bool DisplayDriver::setup_buffer() {
+  if (this->is_failed()) {
+    return false;
+  }
   if (this->buffer_ != nullptr) {
     return true;
   }
-  this->buffer_bitness_ = this->display_bitness_;
+
+  ExternalRAMAllocator<uint8_t> allocator(ExternalRAMAllocator<uint8_t>::ALLOW_FAILURE);
+  this->buffer_bitness_.raw_16 = this->display_bitness_.raw_16;
   switch (this->buffer_bitness_.bytes_per_pixel) {
-    case 3:
-      this->allocate_buffer_(this->get_buffer_length_());
+    case 1:  // 2 pixels per byte
+      this->buffer_ = allocator.allocate(this->get_buffer_size_());
       if (this->buffer_ != nullptr) {
         return true;
         ;
       }
+      ESP_LOGW(TAG, "Not enough (ps)ram memory for 2 Pixels per byte.");
       this->buffer_bitness_ = ColorBitness::COLOR_BITNESS_565;
-      this->buffer_bitness_.right_aligned = false;
-    case 2:
-      this->allocate_buffer_(this->get_buffer_length_());
+    case 2:  // 4 pixels per byte
+      this->buffer_ = allocator.allocate(this->get_buffer_size_());
       if (this->buffer_ != nullptr) {
         return true;
+        ;
       }
-      if (this->palette_ = nullptr) {
-        this->buffer_bitness_ = ColorBitness::COLOR_BITNESS_332;
-      } else {
-        this->buffer_bitness_ = ColorBitness::COLOR_BITNESS_8I;
-      }
-    default:
-      this->allocate_buffer_(this->get_buffer_length_());
+      ESP_LOGW(TAG, "Not enough (ps)ram memory for 4 Pixels per byte.");
+      this->buffer_bitness_ = ColorBitness::COLOR_BITNESS_565;
+    case 3:  // 8 pixels per byte
+      this->buffer_ = allocator.allocate(this->get_buffer_size_());
       if (this->buffer_ == nullptr) {
+        ESP_LOGE(TAG, "Not enough (ps)ram memory for single bit colors.");
         this->mark_failed();
         return false;
       }
       return true;
-  }
-}
-
-void DisplayDriver::allocate_buffer_(uint32_t buffer_length) {
-  ExternalRAMAllocator<uint8_t> allocator(ExternalRAMAllocator<uint8_t>::ALLOW_FAILURE);
-  this->buffer_ = allocator.allocate(buffer_length);
-}
-
-void dump_bridness(std::string title, ColorBitness bitness) {
-  std::string depth;
-  switch (bitness.bits_per_pixel) {
-    case 1:
-      depth = "Monochrome";
-      break;
-    case 2:
-      depth = "4 colors/grayscale";
-      break;
-    case 4:
-      depth = "16 colors/grayscale";
-      break;
-    case 8:
-      if (bitness.indexed) {
-        depth = "8bit Indexed";
-      } else if (bitness.grayscale) {
-        depth = "256 colors/grayscale";
-      } else {
-        depth = "8bit 332 mode";
-      }
-      break;
-    case 16:
-      depth = "16bit 565 mode";
-      break;
-    case 18:
-      depth = "18bit 666 mode";
-      break;
-    case 24:
-      depth = "24bit 888 mode";
-      break;
     default:
-      depth = "Unknown color depth.";
-      break;
+      switch (this->buffer_bitness_.bytes_per_pixel) {
+        case 3:
+          this->buffer_ = allocator.allocate(this->get_buffer_size_());
+          if (this->buffer_ != nullptr) {
+            return true;
+            ;
+          }
+          ESP_LOGW(TAG, "Not enough (ps)ram memory for 3byte colors.");
+          this->buffer_bitness_ = ColorBitness::COLOR_BITNESS_565;
+          this->buffer_bitness_.right_aligned = false;
+        case 2:
+          this->buffer_ = allocator.allocate(this->get_buffer_size_());
+          if (this->buffer_ != nullptr) {
+            return true;
+          }
+          ESP_LOGW(TAG, "Not enough (ps)ram memory for 2byte colors.");
+          if (this->palette_ = nullptr) {
+            this->buffer_bitness_ = ColorBitness::COLOR_BITNESS_332;
+          } else {
+            this->buffer_bitness_ = ColorBitness::COLOR_BITNESS_8I;
+          }
+        default:
+          this->buffer_ = allocator.allocate(this->get_buffer_size_());
+          if (this->buffer_ == nullptr) {
+            ESP_LOGE(TAG, "Not enough (ps)ram memory for single byte colors.");
+            this->mark_failed();
+            return false;
+          }
+          return true;
+      }
   }
-  ESP_LOGCONFIG(TAG, title.c_str(), depth.c_str());
 }
-
 void DisplayDriver::dump_config() {
   LOG_DISPLAY("", "Display Driver:", this);
   this->padding_.info("display window:");
   if (this->buffer_ != nullptr) {
-    dump_bridness("  Buffer Color Dept: %s", this->buffer_bitness_);
+    this->buffer_bitness_.info("  Buffer Color Dept:");
   }
-  dump_bridness("  Display Color Dept: %s", this->display_bitness_);
+  this->display_bitness_.info("  Display Color Dept:");
   // ESP_LOGCONFIG(TAG, "  Data rate: %dMHz", (unsigned) (this->data_rate_ / 1000000));
 
   LOG_PIN("  Reset Pin: ", this->reset_pin_);
-  // LOG_PIN("  CS Pin: ", this->cs_);
-  // LOG_PIN("  DC Pin: ", this->dc_pin_);
+  this->bus_->dump_config();
 
   ESP_LOGCONFIG(TAG, "  Swap_xy: %s", YESNO(this->swap_xy_));
   ESP_LOGCONFIG(TAG, "  Mirror_x: %s", YESNO(this->mirror_x_));
   ESP_LOGCONFIG(TAG, "  Mirror_y: %s", YESNO(this->mirror_y_));
 
   if (this->is_failed()) {
-    ESP_LOGCONFIG(TAG, "  => Failed to init Memory: YES!");
+    ESP_LOGCONFIG(TAG, "  => Failed on setup: YES!");
   }
   LOG_UPDATE_INTERVAL(this);
 }
 
 void DisplayDriver::fill(Color color) {
+  ESP_LOGV(TAG, "fill");
   if (!this->setup_buffer())
     return;
   uint8_t bytes_per_pixel = this->buffer_bitness_.bytes_per_pixel;
-  size_t count = this->get_buffer_length_();
   const uint8_t *addr = this->buffer_;
+  const uint8_t *end_addr = addr + this->get_buffer_size_();
   uint32_t new_color = ColorUtil::from_color(color, this->buffer_bitness_, this->palette_);
 
-  while (count--) {
+  while (true) {
     memcpy((void *) addr, (const void *) &new_color, bytes_per_pixel);
     addr += bytes_per_pixel;
+    if (addr == end_addr)
+      break;
   }
-}
-
-void DisplayDriver::display_buffer() {
-  // check if something was displayed
-  if ((this->x_high_ < this->x_low_) || (this->y_high_ < this->y_low_) || (this->buffer_ == nullptr)) {
-    return;
-  }
-  if (this->display_buffer_(this->buffer_, this->x_low_, this->y_low_, this->x_low_, this->y_low_,
-                            this->y_high_ - this->x_low_ + 1, this->y_high_ - this->y_low_ + 1, this->buffer_bitness_,
-                            this->width_ - this->x_high_ + 1)) {
-    // invalidate watermarks
-    this->x_low_ = this->padding_.w;
-    this->y_low_ = this->padding_.h;
-    this->x_high_ = 0;
-    this->y_high_ = 0;
-  }
+  this->view_port_ = Rect(0, 0, this->width_, this->height_);
 }
 
 // Tell the display controller where we want to draw pixels.
@@ -262,6 +253,8 @@ void DisplayDriver::display_buffer() {
 // return true when the window can be set, orherwise return false.
 
 bool DisplayDriver::set_addr_window(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
+  // this->bus_->start();
+
   this->bus_->send_command(ILI9XXX_CASET);
   this->bus_->send_data(x1 >> 8);
   this->bus_->send_data(x1 & 0xFF);
@@ -273,100 +266,125 @@ bool DisplayDriver::set_addr_window(uint16_t x1, uint16_t y1, uint16_t x2, uint1
   this->bus_->send_data(y2 >> 8);
   this->bus_->send_data(y2 & 0xFF);
   this->bus_->send_command(ILI9XXX_RAMWR);  // Write to RAM
+
+  // this->bus_->end();
+
   return true;
 }
 
-bool DisplayDriver::display_buffer_(const uint8_t *data, int x_display, int y_display, int x_in_data, int y_in_data,
-                                    int width, int height, ColorBitness bitness, int x_pad) {
-  size_t x_low = x_in_data;
-  size_t y_low = y_in_data;
-  size_t x_high = x_in_data + width - 1;
-  size_t y_high = y_in_data + height - 1;
-  size_t data_width = y_high + x_pad;
+void DisplayDriver::display_buffer() {
+  // check if something was displayed
+  if ((!this->view_port_.is_set()) || (this->buffer_ == nullptr)) {
+    return;
+  }
+  if (this->send_buffer(this->buffer_, this->view_port_.x, this->view_port_.y, this->view_port_.x, this->view_port_.y,
+                        this->view_port_.w, this->view_port_.h, this->buffer_bitness_,
+                        this->width_ - this->view_port_.x2())) {
+    // invalidate watermarks
+
+    this->view_port_ = Rect();
+  }
+}
+
+bool DisplayDriver::send_buffer(const uint8_t *data, int x_display, int y_display, int x_in_data, int y_in_data,
+                                int width, int height, ColorBitness bitness, int x_pad) {
+  ESP_LOGV(TAG,
+           "Start display(display:[%d, %d], in_data:[%d + %d, %d], dimension:[%d, %d]",
+           x_display, y_display, x_in_data, x_pad, y_in_data, width, height);
+
+  size_t data_width = width + x_pad;
   uint8_t bytes_per_pixel = bitness.bytes_per_pixel;
   uint8_t devider = bitness.pixel_devider();
 
   auto now = millis();
 
-  this->bus_->start();
-  if (!this->set_addr_window(x_display, y_display, x_display + width - 1, y_display + height - 1)) {
+  // this->bus_->start();
+  
+  if (!this->set_addr_window(x_display, y_display, x_display + width-1, y_display + height-1)) {
     if (data == this->buffer_) {
-      x_low = y_low = 0;
-      x_high = this->width_;
-      y_high = this->height_;
+      x_pad = 0;
+      x_in_data = 0;
+      y_in_data = 0;
+      width = this->width_;
+      height = this->height_;
     } else {
       this->bus_->end();
       return false;
     }
   }
+
   if (devider > 1) {
-    x_low = (x_low - (x_low % devider)) / devider;
-    x_high = (x_high + (devider - (x_high % devider))) / devider;
+    x_in_data = (x_in_data - (x_in_data % devider)) / devider;
+    width = (width + (devider - (width % devider))) / devider;
     data_width = (data_width + (devider - (data_width % devider))) / devider;
   }
   data_width *= bytes_per_pixel;
-  size_t start_pos = (y_low * data_width) + x_low;
+  size_t start_pos = (y_in_data * data_width) + x_in_data;
   const uint8_t *addr = data + start_pos;
-  size_t view_width = (x_high - x_low + 1) * bytes_per_pixel;
-
-  ESP_LOGV(TAG,
-           "Start display(xlow:%d, ylow:%d, xhigh:%d, yhigh:%d, width:%d, "
-           "height:%d, buffer=%4x, display=%4x)",
-           x_low, y_low, x_high, y_high, x_high - x_low + 1, y_high - y_low + 1, bitness, this->display_bitness_);
+  size_t view_width = width * bytes_per_pixel;
 
   if (bitness == this->display_bitness_) {  //  && sw_time < mw_time
     // 16 bit mode maps directly to display format
-
-    for (uint16_t row = y_low; row < y_high; row++) {
-      this->bus_->send_data(addr , view_width );
+    ESP_LOGV(TAG, "Copy buffer to display vw:%d dw:%d h:%d", view_width, view_width, height);
+    for (uint16_t row = 0; row < height; row++) {
+     // ESP_LOGV(TAG, "send from : 0x%x Row:%d", addr, row);
+      this->bus_->send_data(addr, view_width);
       addr += data_width;
+      App.feed_wdt();
     }
   } else {
-    uint8_t transfer_buffer[TRANSFER_BUFFER_SIZE];
+    ESP_LOGV(TAG, "confird buffer before sending to display");
+    if (this->data_batch_ == nullptr) {
+      ExternalRAMAllocator<uint8_t> allocator(ExternalRAMAllocator<uint8_t>::ALLOW_FAILURE);
+      this->data_batch_ = allocator.allocate(TRANSFER_BUFFER_SIZE);
+    }
 
-    ESP_LOGV(TAG, "Doing multiple write");
     uint8_t display_bytes_per_pixel = this->display_bitness_.bytes_per_pixel;
-    size_t x_buffer = x_low;  // remaining number of pixels to write
-    size_t bytes_send = 0;           // index into transfer_buffer
-    uint32_t buf_color;
+    size_t col = 0, row = 0;  // remaining number of pixels to write
+    size_t bytes_send = 0;    // index into transfer_buffer
+    uint32_t buf_color = 0;
     uint32_t disp_color = 0;
     uint8_t disp_part = 0;
+
     while (true) {
       memcpy((void *) &buf_color, (const void *) addr, bytes_per_pixel);
+      //  ESP_LOGV(TAG, "display (col:%d, row:%d,  start_pos:%d, bytes_send:%d ", col, row, start_pos, bytes_send);
       for (auto buf_part = 0; buf_part < devider; buf_part++) {
         Color color = ColorUtil::to_color(buf_color, bitness, this->palette_, buf_part);
         disp_color = ColorUtil::from_color(color, this->display_bitness_, this->palette_, disp_color, disp_part);
         if (++disp_part == this->display_bitness_.pixel_devider()) {
-          memcpy((void *) &transfer_buffer[bytes_send], (const void *) disp_color, display_bytes_per_pixel);
+          memcpy((void *) (this->data_batch_ + bytes_send), (const void *) &disp_color, display_bytes_per_pixel);
           disp_part = 0;
           disp_color = 0;
           bytes_send += display_bytes_per_pixel;
-          if (bytes_send == TRANSFER_BUFFER_SIZE) {
-            this->bus_->send_data(transfer_buffer, bytes_send);
+          if (bytes_send >= TRANSFER_BUFFER_SIZE - display_bytes_per_pixel) {
+            this->bus_->send_data(this->data_batch_, bytes_send);
             bytes_send = 0;
             App.feed_wdt();
           }
         }
       }
-      addr++;
+      addr += bytes_per_pixel;
       // end of line? Skip to the next.
-      if (++x_buffer == x_high) {
+      if (++col == width) {
         start_pos += data_width;
         addr = data + start_pos;
-        x_buffer = x_low;
-        y_low++;
+        col = 0;
+        row++;
       }
-      if (y_low >= y_high) {
+      if (row >= height) {
         break;
       }
     }
 
     // flush any balance.
     if (bytes_send != 0) {
-      this->bus_->send_data(transfer_buffer, bytes_send);
+      this->bus_->send_data(this->data_batch_, bytes_send);
     }
   }
-  this->bus_->end();
+
+  // this->bus_->end();
+
   ESP_LOGV(TAG, "Data write took %dms", (unsigned) (millis() - now));
   return true;
 }
@@ -380,7 +398,7 @@ void DisplayDriver::draw_pixels_at(const uint8_t *data, int x_display, int y_dis
   // do color conversion pixel-by-pixel into the buffer and draw it later. If this is happening the user has not
   // configured the renderer well.
   if (this->rotation_ == DISPLAY_ROTATION_0_DEGREES && !this->is_buffered()) {
-    if (this->display_buffer_(data, x_display, y_display, x_in_data, y_in_data, width, height, bitness, x_pad)) {
+    if (this->send_buffer(data, x_display, y_display, x_in_data, y_in_data, width, height, bitness, x_pad)) {
       return;
     }
   }
@@ -388,10 +406,11 @@ void DisplayDriver::draw_pixels_at(const uint8_t *data, int x_display, int y_dis
 }
 
 void DisplayDriver::set_invert_colors(bool invert) {
-  this->pre_invertcolors_ = invert;
   if (is_ready()) {
-    this->bus_->send_command(invert ? ILI9XXX_INVON : ILI9XXX_INVOFF);
+    ESP_LOGE(TAG, "You cant set invert color anymore.");
+    return;
   }
+  this->pre_invertcolors_ = invert;
 }
 
 void HOT DisplayDriver::draw_pixel_at(int x, int y, Color color) {
@@ -420,6 +439,7 @@ void HOT DisplayDriver::draw_pixel_at(int x, int y, Color color) {
 
 void HOT DisplayDriver::buffer_pixel_at(int x, int y, Color color) {
   if (x >= this->width_ || x < 0 || y >= this->height_ || y < 0 || !this->setup_buffer()) {
+    ESP_LOGD(TAG, "buffer_pixel_at skipt.");
     return;
   }
 
@@ -427,7 +447,7 @@ void HOT DisplayDriver::buffer_pixel_at(int x, int y, Color color) {
 
   uint8_t bytes_per_pixel = this->buffer_bitness_.bytes_per_pixel;
   uint8_t devider = this->buffer_bitness_.pixel_devider();
-  const char *addr = (char *) this->buffer_;
+  const uint8_t *addr = this->buffer_;
   size_t width = this->width_, x_buf = x;
 
   if (devider > 1) {
@@ -441,43 +461,26 @@ void HOT DisplayDriver::buffer_pixel_at(int x, int y, Color color) {
 
   if (old_color != new_color) {
     memcpy((void *) addr, (const void *) &new_color, bytes_per_pixel);
-    // low and high watermark may speed up drawing from buffer
-    if (x < this->x_low_)
-      this->x_low_ = x;
-    if (y < this->y_low_)
-      this->y_low_ = y;
-    if (x > this->x_high_)
-      this->x_high_ = x;
-    if (y > this->y_high_)
-      this->y_high_ = y;
+    this->view_port_.include(x, y);
   }
 }
 
 // ======================== displayInterface
 
 void displayInterface::send_command(uint8_t command, const uint8_t *data, uint8_t len, bool start) {
-  if (start || this->always_start_) {
-    this->start();
-  }
+  this->start();
   this->command(command);  // Send the command byte
 
   if (len > 0) {
     this->data(data, len);
   }
-
-  if (start || this->always_start_) {
-    this->end();
-  }
+  this->end();
 }
 
 void displayInterface::send_data(const uint8_t *data, uint8_t len, bool start) {
-  if (start || this->always_start_) {
-    this->start();
-  }
+  this->start();
   this->data(data, len);
-  if (start || this->always_start_) {
-    this->end();
-  }
+  this->end();
 }
 
 void displayInterface::command(uint8_t value) {
@@ -489,9 +492,9 @@ void displayInterface::command(uint8_t value) {
 void displayInterface::data(const uint8_t *value, uint16_t len) {
   this->start_data();
   if (len == 1) {
-    this->send_byte(value[0]);
+    this->send_byte(*value);
   } else {
-    this->send_array((uint8_t *) value, len);
+    this->send_array(value, len);
   }
   this->end_data();
 }
@@ -503,6 +506,13 @@ void SPI_Interface::setup() {
   this->dc_pin_->digital_write(false);
 
   this->spi_setup();
+}
+
+void SPI_Interface::dump_config() {
+  ESP_LOGCONFIG(TAG, "  Interface: %s", "SPI");
+  LOG_PIN("    CS Pin: ", this->cs_);
+  LOG_PIN("    DC Pin: ", this->dc_pin_);
+  ESP_LOGCONFIG(TAG, "    Data rate: %dMHz", (unsigned) (this->data_rate_ / 1000000));
 }
 
 void SPI_Interface::start_command() { this->dc_pin_->digital_write(false); }
@@ -519,8 +529,7 @@ void SPI_Interface::start() {
 void SPI_Interface::end() {
   this->enabled_--;
   if (this->enabled_ == 0) {
-    this->end();
-    this->enabled_ = 0;
+    this->disable();
   }
 }
 
@@ -528,6 +537,13 @@ void SPI_Interface::send_byte(uint8_t data) { this->write_byte(data); }
 void SPI_Interface::send_array(const uint8_t *data, int16_t len) { this->write_array(data, len); };
 
 // ======================== SPI16D_Interface
+
+void SPI16D_Interface::dump_config() {
+  ESP_LOGCONFIG(TAG, "  Interface: %s", "SPI16D");
+  LOG_PIN("    CS Pin: ", this->cs_);
+  LOG_PIN("    DC Pin: ", this->dc_pin_);
+  ESP_LOGCONFIG(TAG, "    Data rate: %dMHz", (unsigned) (this->data_rate_ / 1000000));
+}
 
 void SPI16D_Interface::data(const uint8_t *value, uint16_t len) {
   this->start_data();

@@ -28,6 +28,8 @@ class displayInterface {
   virtual void start(){};
   virtual void end(){};
 
+  virtual void dump_config(){};
+
  protected:
   virtual void start_command() = 0;
   virtual void end_command(){};
@@ -50,6 +52,7 @@ class SPI_Interface : public displayInterface,
   void set_dc_pin(GPIOPin *dc_pin) { dc_pin_ = dc_pin; }
   void start() override;
   void end() override;
+  void dump_config() override;
 
  protected:
   void start_command() override;
@@ -57,12 +60,13 @@ class SPI_Interface : public displayInterface,
   void start_data() override;
   void send_byte(uint8_t data) override;
   void send_array(const uint8_t *data, int16_t len) override;
-
   GPIOPin *dc_pin_{nullptr};
   int enabled_{0};
 };
 
 class SPI16D_Interface : public SPI_Interface {
+  void dump_config() override;
+
  protected:
   void data(const uint8_t *value, uint16_t len) override;
 };
@@ -78,12 +82,14 @@ class DisplayDriver : public Display {
 
   ColorBitness get_color_depth() { return this->display_bitness_; }
   void set_18bit_mode(bool mode) {
-    this->display_bitness_ = mode ? ColorBitness::COLOR_BITNESS_666 : ColorBitness::COLOR_BITNESS_565;
+    if (mode) {
+      this->display_bitness_.raw_16 = ColorBitness::COLOR_BITNESS_666;
+    }
   }
 
-  bool get_18bit_mode() { return this->display_bitness_ == ColorBitness::COLOR_BITNESS_666; }
+  bool get_18bit_mode() { return this->display_bitness_.bits_per_pixel == ColorBitness::COLOR_BITS_666; }
   void set_color_order(ColorOrder color_order) { this->display_bitness_.color_order = color_order; }
-  ColorOrder gset_color_order() { return (ColorOrder) this->display_bitness_.color_order; }
+  ColorOrder get_color_order() { return (ColorOrder) this->display_bitness_.color_order; }
 
   void set_swap_xy(bool swap_xy) { this->swap_xy_ = swap_xy; }
   void set_mirror_x(bool mirror_x) { this->mirror_x_ = mirror_x; }
@@ -102,11 +108,16 @@ class DisplayDriver : public Display {
                       ColorBitness bitness, int x_pad) override;
 
   bool is_buffered() { return (this->buffer_ != nullptr); }
+  float get_setup_priority() const override { return setup_priority::HARDWARE; };
 
  protected:
+  virtual void preset_init_values();
+  virtual void finalize_init_values();
+
   virtual void buffer_pixel_at(int x, int y, Color color);
-  bool display_buffer_(const uint8_t *data, int x_display, int y_display, int x_in_data, int y_in_data, int width, int height,
-                       ColorBitness bitness, int x_pad);
+  virtual bool set_addr_window(uint16_t x, uint16_t y, uint16_t x2, uint16_t y2);
+  virtual bool send_buffer(const uint8_t *data, int x_display, int y_display, int x_in_data, int y_in_data,
+                              int width, int height, ColorBitness bitness, int x_pad);
 
   virtual void setup_pins();
   virtual void setup_lcd();
@@ -115,23 +126,17 @@ class DisplayDriver : public Display {
   void display_buffer() override;
 
   void reset_();
-  void allocate_buffer_(uint32_t buffer_length);
-  virtual bool set_addr_window(uint16_t x, uint16_t y, uint16_t x2, uint16_t y2);
 
   displayInterface* bus_{nullptr};
-  uint8_t const *init_sequence_{};
-
-  uint16_t x_low_{0};
-  uint16_t y_low_{0};
-  uint16_t x_high_{0};
-  uint16_t y_high_{0};
+  const uint8_t *init_sequence_{};
+  Rect view_port_{};
   const uint8_t *palette_;
   std::string model_{""};
 
-  ColorBitness buffer_bitness_{ColorBitness::COLOR_BITNESS_565};
-  ColorBitness display_bitness_{ColorBitness::COLOR_BITNESS_565};
+  ColorBitness buffer_bitness_{};
+  ColorBitness display_bitness_{ColorBitness(ColorBitness::COLOR_BITNESS_565)};
 
-  uint32_t get_buffer_length_();
+  uint32_t get_buffer_size_();
 
   GPIOPin *reset_pin_{nullptr};
 
@@ -141,6 +146,7 @@ class DisplayDriver : public Display {
   bool mirror_y_{};
 
   uint8_t *buffer_{nullptr};
+  uint8_t *data_batch_{nullptr};
 };
 
 }  // namespace display

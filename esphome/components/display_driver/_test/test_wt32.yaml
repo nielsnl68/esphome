@@ -1,0 +1,89 @@
+substitutions:
+  name: lum-iot42
+  comment: Slaapkamer display
+  log: verbose
+
+esp32:
+  board: denky32
+  framework:
+    type: arduino
+
+
+
+esphome:
+  name: ${name}
+  comment: "${name} - ${comment}"
+  friendly_name: "${comment}"
+
+
+logger:
+  level: verbose
+
+psram:
+
+spi:
+  clk_pin: 14
+  mosi_pin: 13
+  miso_pin:
+    number: 12
+    ignore_strapping_warning: true
+
+display:
+  - id: my_display
+    platform: display_driver
+    dimensions: 320x480
+    model: ST7796
+    interface:
+      type: spi
+      cs_pin:
+        number: 15
+        ignore_strapping_warning: true
+      dc_pin: 21
+    reset_pin: 22
+    transform:
+      swap_xy: false
+      mirror_x: false
+      mirror_y: false
+    auto_clear_enabled: false
+    update_interval: 30 sec
+    lambda: |-
+      //it.fill(my_red);
+      int shift_x = (it.get_width())/2;
+      int shift_y = (it.get_height())/2;
+      //it.filled_rectangle(0, 0, it.get_width(), shift_y);
+      //it.horizontal_line(0,0,it.get_width(),my_yellow );
+      //it.vertical_line(it.get_width()-1, 0, 50 , my_black);
+      for(auto i = 0; i<256; i++) {
+        it.horizontal_line( 0,i,it.get_width(), my_black.fade_to_white(i));
+      }
+      //it.rectangle(shift_x-100, shift_y-100, shift_x+ 100, shift_y+100, my_green);
+color:
+  - id: my_blue
+    blue: 100%
+  - id: my_red
+    red: 100%
+  - id: my_green
+    green: 100%
+  - id: my_white
+    red: 100%
+    blue: 100%
+    green: 100%
+  - id: my_yellow
+    hex: 'ffff00'
+  - id: my_black
+    hex: '000000'
+
+# Define a PWM output on the ESP32
+# Define a PWM output on the ESP32
+output:
+  - platform: ledc
+    pin:  23
+    id: gpio_32_backlight_pwm
+
+# Define a monochromatic, dimmable light for the backlight
+light:
+  - platform: monochromatic
+    output: gpio_32_backlight_pwm
+    name: Display Backlight
+    id: back_light
+    restore_mode: ALWAYS_ON

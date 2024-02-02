@@ -16,6 +16,28 @@ void Rect::expand(int16_t horizontal, int16_t vertical) {
   }
 }
 
+void Rect::include(int16_t x, int16_t y) {
+  if (!this->is_set()) {
+    this->x = x;
+    this->y = y;
+    this->w = 1;
+    this->h = 1;
+  } else {
+    if (x < this->x) {
+      this->w += (x - this->x);
+      this->x = x;
+    } else {
+      this->w = (x - this->x) + 1;
+    }
+    if (y < this->y) {
+      this->h += (y - this->y);
+      this->y = y;
+    } else {
+      this->h = (y - this->y) + 1;
+    }
+  }
+}
+
 void Rect::extend(Rect rect) {
   if (!this->is_set()) {
     this->x = rect.x;

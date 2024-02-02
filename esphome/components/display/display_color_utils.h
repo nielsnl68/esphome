@@ -1,22 +1,17 @@
 #pragma once
 #include "esphome/core/color.h"
+#include "esphome/core/log.h"
 
 namespace esphome {
 namespace display {
-enum ColorOrder : uint8_t { COLOR_ORDER_RGB = 0, COLOR_ORDER_BGR = 1, COLOR_ORDER_GRB = 2 };
 
-/**
- * the ColorDepth values tells how a pixel is stored.
- * Each bit has his own meaning:
- * I: Indexed value
- * G: grayscale
- * L: little endian
- * R: right_bit_aligned
- * xx: unused atm.
- * BB: number of bytes per pixel
- * DD: is the divider
- * FF FFFF: color structure in bits
- */
+static const char *const TAGC = "ColorUtil";
+
+enum ColorOrder : uint8_t { COLOR_ORDER_RGB = 0, COLOR_ORDER_BGR = 1, COLOR_ORDER_GRB = 2 };
+static const char* ColorOrderStr[3] = {"RGB", "BGR", "GRB"};
+
+
+
 
 struct ColorBitness {
   static const uint16_t COLOR_BITS_888 = 0x0018;
@@ -47,19 +42,20 @@ struct ColorBitness {
 
   union {
     struct {
-      uint16_t color_order : 2;
-      uint16_t little_endian : 1;
-      uint16_t right_aligned : 1;
-      uint16_t indexed : 1;
-      uint16_t grayscale : 1;
-      uint16_t bytes_per_pixel : 2;
-      uint16_t devider : 2;
       uint16_t bits_per_pixel : 6;
+      uint16_t devider : 2;
+      uint16_t bytes_per_pixel : 2;
+      uint16_t grayscale : 1;
+      uint16_t indexed : 1;
+      uint16_t right_aligned : 1;
+      uint16_t little_endian : 1;
+      uint16_t color_order : 2;
+
     };
     uint16_t raw_16 = 0;
   };
   inline ColorBitness() ALWAYS_INLINE : raw_16(0) {}              // NOLINT
-  inline ColorBitness(uint16_t bt) ALWAYS_INLINE : raw_16(bt) {}  // NOLINT
+  inline ColorBitness(uint16_t bt) ALWAYS_INLINE { raw_16 = (raw_16 & 0xD000) | (bt & 0x3fff); }  // NOLINT
   inline ColorBitness(uint16_t bt, bool gs, bool idx, bool ra = false, bool le = false,
                       uint8_t co = ColorOrder::COLOR_ORDER_RGB) ALWAYS_INLINE : raw_16(bt) {
     grayscale = gs;
@@ -69,11 +65,11 @@ struct ColorBitness {
     color_order = co;
   }                                                  // NOLINT
   ColorBitness operator=(const ColorBitness &rhs) {  // NOLINT
-    this->raw_16 = (this->raw_16 & 0xf000) & (rhs.raw_16 & 0x0FFF);
+    this->raw_16 = (this->raw_16 & 0xd000) | (rhs.raw_16 & 0x3FFF);
     return *this;
   }
   ColorBitness operator=(uint16_t colorbitmess) {  // NOLINT
-    this->raw_16 = (this->raw_16 & 0xf000) & (colorbitmess & 0x0FFF);
+    this->raw_16 = (this->raw_16 & 0xd000) | (colorbitmess & 0x3FFF);
     return *this;
   }
 
@@ -91,6 +87,61 @@ struct ColorBitness {
   }
 
   inline uint8_t pixel_devider() { return (uint8_t) 1 << devider; }
+
+  inline void pixel_mode () {
+  std::string depth;
+  switch (bits_per_pixel) {
+    case 1:
+      depth = "1bit";
+      break;
+    case 2:
+      depth = "2bits";
+      break;
+    case 4:
+      depth = "4bit";
+      break;
+    case 8:
+      if (indexed || grayscale) {
+        depth = "8bit";
+      } else {
+        depth = "8bit 332 mode";
+      }
+      break;
+    case 16:
+      depth = "16bit 565 mode";
+      break;
+    case 18:
+      depth = "18bit 666 mode";
+      break;
+    case 24:
+      depth = "24bit 888 mode";
+      break;
+    default:
+      depth = "Unknown";
+      break;
+  }
+  ESP_LOGCONFIG(TAGC, "    Pixel mode: %s", depth.c_str());
+}
+
+
+  inline void info(const char *prefix = "Bitmess info:") {
+    ESP_LOGCONFIG(TAGC, prefix);
+    ESP_LOGCONFIG(TAGC, "    Bitmess raw  : %04x ", raw_16);
+    pixel_mode();
+    if (bytes_per_pixel > 1) {
+      ESP_LOGCONFIG(TAGC, "    Bytes p Pixel: %d byte(s)", bytes_per_pixel);
+    } else if (devider == 1) {
+      ESP_LOGCONFIG(TAGC, "    Bytes p Pixel: %d byte", bytes_per_pixel);
+    } else {
+      ESP_LOGCONFIG(TAGC, "    Pixel p.Byte : %d bits", bytes_per_pixel);
+    }
+    ESP_LOGCONFIG(TAGC, "    Color Order  : %s", ColorOrderStr[color_order]);
+
+    ESP_LOGCONFIG(TAGC, "    right Aligned: %s", YESNO(right_aligned));
+    ESP_LOGCONFIG(TAGC, "    Indexed      : %s", YESNO(indexed));
+    ESP_LOGCONFIG(TAGC, "    grayscale    : %s", YESNO(grayscale));
+    ESP_LOGCONFIG(TAGC, "    Little Ending: %s", YESNO(little_endian));
+    }
 };
 
 struct ColorBits {

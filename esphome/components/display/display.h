@@ -178,8 +178,8 @@ class Display : public PollingComponent {
     this->padding_ = Rect(0, this->width_, 0, this->height_);
   }
 
-  void set_dispay_window(uint16_t x_low, uint16_t x_high, uint16_t y_low, uint16_t y_high) {
-    this->padding_ = Rect(x_low, x_high - x_low + 1, y_low, y_high - x_low + 1);
+  void set_dispay_window(uint16_t x_min, uint16_t x_max, uint16_t y_min, uint16_t y_max) {
+   this->padding_ = Rect(x_min, x_max - x_min + 1, y_min, y_max - x_min + 1);
   }
 
   /// Get the width of the display in pixels with rotation applied.
@@ -236,15 +236,14 @@ class Display : public PollingComponent {
                               int width, int height, ColorBitness bitness, int x_pad = 0);
 
   /// Convenience overload for base case where the pixels are packed into the buffer with no gaps (e.g. suits LVGL.)
-  void draw_pixels_at(int x_start, int y_start, int w, int h, const uint8_t *ptr, ColorOrder order,
-                      ColorBitness bitness, bool big_endian) {
-    bitness.color_order = order;
-    bitness.little_endian = !big_endian;
-    this->draw_pixels_at(ptr, x_start, y_start, 0, 0, w, h, bitness, 0);
-  }
   // #depricated
   void draw_pixels_at(int x_start, int y_start, int w, int h, const uint8_t *ptr, ColorOrder order,
-                      ColorBitness bitness, bool big_endian, int x_offset, int y_offset, int x_pad) {
+                             ColorBitness bitness, bool big_endian) {
+    this->draw_pixels_at(x_start, y_start, w, h, ptr, order, bitness, big_endian, 0, 0, 0);
+  }
+  // #depricated
+  virtual void draw_pixels_at(int x_start, int y_start, int w, int h, const uint8_t *ptr, ColorOrder order,
+                              ColorBitness bitness, bool big_endian, int x_offset, int y_offset, int x_pad) {
     bitness.color_order = order;
     bitness.little_endian = !big_endian;
     this->draw_pixels_at(ptr, x_start, y_start, x_offset, y_offset, w, h, bitness, x_pad);

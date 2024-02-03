@@ -1,10 +1,10 @@
 substitutions:
   name: lum-iot42
   comment: Slaapkamer display
-  log: verbose
+  log: debug
 
 esp32:
-  board: denky32
+  board: esp-wrover-kit
   framework:
     type: arduino
 
@@ -17,7 +17,7 @@ esphome:
 
 
 logger:
-  level: verbose
+  level: debug
 
 psram:
 
@@ -31,7 +31,7 @@ spi:
 display:
   - id: my_display
     platform: display_driver
-    dimensions: 320x480
+    dimensions: 480x320
     model: ST7796
     interface:
       type: spi
@@ -41,21 +41,24 @@ display:
       dc_pin: 21
     reset_pin: 22
     transform:
-      swap_xy: false
+      swap_xy: true
       mirror_x: false
       mirror_y: false
-    auto_clear_enabled: false
+    auto_clear_enabled: true
+    # color_order: rgb
     update_interval: 30 sec
     lambda: |-
-      //it.fill(my_red);
       int shift_x = (it.get_width())/2;
       int shift_y = (it.get_height())/2;
-      //it.filled_rectangle(0, 0, it.get_width(), shift_y);
-      //it.horizontal_line(0,0,it.get_width(),my_yellow );
-      //it.vertical_line(it.get_width()-1, 0, 50 , my_black);
+      // it.filled_rectangle(0, 0, it.get_width(), shift_y);
+
       for(auto i = 0; i<256; i++) {
-        it.horizontal_line( 0,i,it.get_width(), my_black.fade_to_white(i));
+          /// it.horizontal_line( 0,i,it.get_width(), my_black.fade_to_white(i));
       }
+      it.filled_rectangle(  5,  5, 51, 51, my_red);
+      it.filled_rectangle( 65,  5, 51, 51, my_green);
+      it.filled_rectangle(125,  5, 51, 51, my_blue);
+
       //it.rectangle(shift_x-100, shift_y-100, shift_x+ 100, shift_y+100, my_green);
 color:
   - id: my_blue

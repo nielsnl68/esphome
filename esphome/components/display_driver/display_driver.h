@@ -16,15 +16,13 @@ const size_t TRANSFER_BUFFER_SIZE = 126;  // ensure this is divisible by 6
 class displayInterface {
  public:
   virtual void setup(){};
-  void set_always_start(bool always_enable) { this->always_start_ = always_enable; }
-  inline void send_command(uint8_t command, bool enable = false) {
-    this->send_command( command, nullptr, 0, enable);
+  inline void send_command(uint8_t command) {
+    this->send_command( command, nullptr, 0);
   }
-  void send_command(uint8_t command, const uint8_t *data, uint8_t len, bool enable = false);
-  inline void send_data(const uint8_t data, bool enable = false) {
-     send_data(&data, 1, enable);
-  }
-  void send_data(const uint8_t *data, uint8_t len = 1, bool enable = false);
+  void send_command(uint8_t command, const uint8_t *data, size_t len);
+  inline void send_data(const uint8_t data) { this->send_data(&data, 1); }
+  void send_data(const uint8_t *data, size_t len = 1);
+
   virtual void start(){};
   virtual void end(){};
 
@@ -37,9 +35,9 @@ class displayInterface {
   virtual void end_data(){};
 
   virtual void command(uint8_t value);
-  virtual void data(const uint8_t *value, uint16_t len);
+  virtual void data(const uint8_t *value, size_t len);
   virtual void send_byte(uint8_t data)=0;
-  virtual void send_array(const uint8_t *data, int16_t len)=0;
+  virtual void send_array(const uint8_t *data, size_t len) = 0;
 
   bool always_start_{false};
 };
@@ -49,7 +47,7 @@ class SPI_Interface : public displayInterface,
                                             Display_DATA_RATE> {
  public:
   void setup();
-  void set_dc_pin(GPIOPin *dc_pin) { dc_pin_ = dc_pin; }
+  void set_dc_pin(GPIOPin *dc_pin) { this->dc_pin_ = dc_pin; }
   void start() override;
   void end() override;
   void dump_config() override;
@@ -58,8 +56,9 @@ class SPI_Interface : public displayInterface,
   void start_command() override;
   void end_command() override;
   void start_data() override;
+
   void send_byte(uint8_t data) override;
-  void send_array(const uint8_t *data, int16_t len) override;
+  void send_array(const uint8_t *data, size_t len) override;
   GPIOPin *dc_pin_{nullptr};
   int enabled_{0};
 };
@@ -68,7 +67,7 @@ class SPI16D_Interface : public SPI_Interface {
   void dump_config() override;
 
  protected:
-  void data(const uint8_t *value, uint16_t len) override;
+  void data(const uint8_t *value, size_t len) override;
 };
 
 class DisplayDriver : public Display {

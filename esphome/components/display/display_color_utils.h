@@ -8,10 +8,7 @@ namespace display {
 static const char *const TAGC = "ColorUtil";
 
 enum ColorOrder : uint8_t { COLOR_ORDER_RGB = 0, COLOR_ORDER_BGR = 1, COLOR_ORDER_GRB = 2 };
-static const char* ColorOrderStr[3] = {"RGB", "BGR", "GRB"};
-
-
-
+static const char *ColorOrderStr[3] = {"RGB", "BGR", "GRB"};
 
 struct ColorBitness {
   static const uint16_t COLOR_BITS_888 = 0x0018;
@@ -19,18 +16,18 @@ struct ColorBitness {
   static const uint16_t COLOR_BITS_565 = 0x0010;
   static const uint16_t COLOR_BITS_332 = 0x0008;
 
-  static const uint16_t COLOR_BITNESS_888 = 0x0318;
+  static const uint16_t COLOR_BITNESS_888 = 0x1318;
   static const uint16_t COLOR_BITNESS_888L = COLOR_BITNESS_888 | 0x2000;
 
   static const uint16_t COLOR_BITNESS_666 = 0x0312;
   static const uint16_t COLOR_BITNESS_666L = COLOR_BITNESS_666 | 0x2000;
-  static const uint16_t COLOR_BITNESS_666R = COLOR_BITNESS_666 | 0x1000;
-  static const uint16_t COLOR_BITNESS_666RL = COLOR_BITNESS_666R | 0x2000;
+  static const uint16_t COLOR_BITNESS_666A = COLOR_BITNESS_666 | 0x1000;
+  static const uint16_t COLOR_BITNESS_666AL = COLOR_BITNESS_666A | 0x2000;
 
   static const uint16_t COLOR_BITNESS_565 = 0x0210;
   static const uint16_t COLOR_BITNESS_565L = COLOR_BITNESS_565 | 0x2000;
-  static const uint16_t COLOR_BITNESS_565R = 0x0310 | 0x1000;
-  static const uint16_t COLOR_BITNESS_565RL = COLOR_BITNESS_565R | 0x2000;
+  static const uint16_t COLOR_BITNESS_565A = 0x0310 | 0x1000;
+  static const uint16_t COLOR_BITNESS_565AL = COLOR_BITNESS_565A | 0x2000;
 
   static const uint16_t COLOR_BITNESS_332 = 0x0108;
 
@@ -47,21 +44,20 @@ struct ColorBitness {
       uint16_t bytes_per_pixel : 2;
       uint16_t grayscale : 1;
       uint16_t indexed : 1;
-      uint16_t right_aligned : 1;
+      uint16_t byte_aligned : 1;
       uint16_t little_endian : 1;
       uint16_t color_order : 2;
-
     };
     uint16_t raw_16 = 0;
   };
-  inline ColorBitness() ALWAYS_INLINE : raw_16(0) {}              // NOLINT
-  inline ColorBitness(uint16_t bt) ALWAYS_INLINE { raw_16 = (raw_16 & 0xD000) | (bt & 0x3fff); }  // NOLINT
-  inline ColorBitness(uint16_t bt, bool gs, bool idx, bool ra = false, bool le = false,
+  inline ColorBitness() ALWAYS_INLINE : raw_16(0) {}                                              // NOLINT
+  inline ColorBitness(uint16_t bt) ALWAYS_INLINE { raw_16 = (raw_16 & 0xF000) | (bt & 0x0fff); }  // NOLINT
+  inline ColorBitness(uint16_t bt, bool gs, bool idx, bool ba = false, bool le = false,
                       uint8_t co = ColorOrder::COLOR_ORDER_RGB) ALWAYS_INLINE : raw_16(bt) {
     grayscale = gs;
     indexed = idx;
     little_endian = le;
-    right_aligned = ra;
+    byte_aligned = ba;
     color_order = co;
   }                                                  // NOLINT
   ColorBitness operator=(const ColorBitness &rhs) {  // NOLINT
@@ -88,60 +84,59 @@ struct ColorBitness {
 
   inline uint8_t pixel_devider() { return (uint8_t) 1 << devider; }
 
-  inline void pixel_mode () {
-  std::string depth;
-  switch (bits_per_pixel) {
-    case 1:
-      depth = "1bit";
-      break;
-    case 2:
-      depth = "2bits";
-      break;
-    case 4:
-      depth = "4bit";
-      break;
-    case 8:
-      if (indexed || grayscale) {
-        depth = "8bit";
-      } else {
-        depth = "8bit 332 mode";
-      }
-      break;
-    case 16:
-      depth = "16bit 565 mode";
-      break;
-    case 18:
-      depth = "18bit 666 mode";
-      break;
-    case 24:
-      depth = "24bit 888 mode";
-      break;
-    default:
-      depth = "Unknown";
-      break;
+  inline void pixel_mode(const char *tag = TAGC) {
+    std::string depth;
+    switch (bits_per_pixel) {
+      case 1:
+        depth = "1bit";
+        break;
+      case 2:
+        depth = "2bits";
+        break;
+      case 4:
+        depth = "4bit";
+        break;
+      case 8:
+        if (indexed || grayscale) {
+          depth = "8bit";
+        } else {
+          depth = "8bit 332 mode";
+        }
+        break;
+      case 16:
+        depth = "16bit 565 mode";
+        break;
+      case 18:
+        depth = "18bit 666 mode";
+        break;
+      case 24:
+        depth = "24bit 888 mode";
+        break;
+      default:
+        depth = "Unknown";
+        break;
+    }
+    ESP_LOGCONFIG(TAGC, "    Pixel mode   : %s", depth.c_str());
   }
-  ESP_LOGCONFIG(TAGC, "    Pixel mode   : %s", depth.c_str());
-}
 
-
-  inline void info(const char *prefix = "Bitmess info:") {
-    ESP_LOGCONFIG(TAGC, prefix);
-    ESP_LOGCONFIG(TAGC, "    Bitmess raw  : 0x%04x ", raw_16);
-    pixel_mode();
+  inline void info(const char *prefix = "Bitmess info:", const char *tag = TAGC) {
+    ESP_LOGCONFIG(tag, prefix);
+    ESP_LOGCONFIG(tag, "    Bitmess raw  : 0x%04x ", raw_16);
+    pixel_mode(tag);
     if (bytes_per_pixel > 1) {
-      ESP_LOGCONFIG(TAGC, "    Bytes p Pixel: %d bytes", bytes_per_pixel);
+      ESP_LOGCONFIG(tag, "    Bytes p Pixel: %d bytes", bytes_per_pixel);
     } else if (devider == 1) {
-      ESP_LOGCONFIG(TAGC, "    Bytes p Pixel: %d byte", bytes_per_pixel);
+      ESP_LOGCONFIG(tag, "    Bytes p Pixel: %d byte", bytes_per_pixel);
     } else {
-      ESP_LOGCONFIG(TAGC, "    Pixel p.Byte : %d bits", bytes_per_pixel);
+      ESP_LOGCONFIG(tag, "    Pixel p.Byte : %d bits", bytes_per_pixel);
     }
-    ESP_LOGCONFIG(TAGC, "    Color Order  : %s", ColorOrderStr[color_order]);
+    ESP_LOGCONFIG(tag, "    Color Order  : %s", ColorOrderStr[color_order]);
 
-    ESP_LOGCONFIG(TAGC, "    right Aligned: %s", YESNO(right_aligned));
-    ESP_LOGCONFIG(TAGC, "    Indexed      : %s", YESNO(indexed));
-    ESP_LOGCONFIG(TAGC, "    grayscale    : %s", YESNO(grayscale));
-    ESP_LOGCONFIG(TAGC, "    Little Ending: %s", YESNO(little_endian));
-    }
+    ESP_LOGCONFIG(tag, "    Indexed      : %s", YESNO(indexed));
+    ESP_LOGCONFIG(tag, "    grayscale    : %s", YESNO(grayscale));
+    ESP_LOGCONFIG(tag, "    Little Ending: %s", YESNO(little_endian));
+    ESP_LOGCONFIG(tag, "    Byte Aligned : %s", YESNO(byte_aligned));
+  }
 };
 
 struct ColorBits {
@@ -151,6 +146,8 @@ struct ColorBits {
 };
 
 inline static uint8_t esp_scale(uint8_t i, uint8_t scale, uint8_t max_value = 255) { return (max_value * i / scale); }
+
+static uint32_t last_value{0};
 
 class ColorUtil {
  public:
@@ -184,15 +181,16 @@ class ColorUtil {
   // depricated
   static Color to_color(uint32_t colorcode, ColorOrder color_order,
                         ColorBitness bitness = ColorBitness::COLOR_BITNESS_888, bool right_bit_aligned = true) {
-    bitness.right_aligned = right_bit_aligned;
+    bitness.byte_aligned = !right_bit_aligned;
     bitness.color_order = color_order;
 
     return ColorUtil::to_color(colorcode, bitness, nullptr);
   }
 
-  static Color to_color(uint32_t colorcode, ColorBitness bitness, const uint8_t *palette = nullptr, uint8_t position = 0) {
+  static Color to_color(uint32_t colorcode, ColorBitness bitness, const uint8_t *palette = nullptr,
+                        uint8_t position = 0) {
     Color color_return = Color::BLACK;
-    if (bitness.devider>1) {
+    if (bitness.devider > 1) {
       if (bitness.little_endian)
         position = 7 - (position % bitness.pixel_devider());
       uint8_t pixel_pos = (position % bitness.pixel_devider()) * (8 / bitness.pixel_devider());
@@ -204,8 +202,7 @@ class ColorUtil {
       return ColorUtil::index8_to_color_palette888(colorcode, palette);
     }
     if (bitness.grayscale) {
-      return color_return.fade_to_white(
-          esp_scale(colorcode & (bitness.pixel_devider() - 1), bitness.pixel_devider()));
+      return color_return.fade_to_white(esp_scale(colorcode & (bitness.pixel_devider() - 1), bitness.pixel_devider()));
     }
 
     uint8_t first_color, second_color, third_color;
@@ -213,22 +210,22 @@ class ColorUtil {
 
     if (bitness.little_endian && bitness.bytes_per_pixel > 1) {
       if (bitness.bytes_per_pixel == 2) {
-        colorcode = (colorcode & 0xff00 >> 8) + (colorcode & 0x00ff << 8);
+        colorcode = ((colorcode & 0xff00) >> 8) | ((colorcode & 0x00ff) << 8);
       } else {
-        colorcode = (colorcode & 0xff0000 >> 16) + (colorcode & 0x0000ff << 16) + (colorcode & 0x00ff00);
+        colorcode = ((colorcode & 0xff0000) >> 16) + ((colorcode & 0x0000ff) << 16) + (colorcode & 0x00ff00);
       }
     }
 
-    if (bitness.right_aligned) {
+    if (bitness.byte_aligned) {
+      first_color = esp_scale(((colorcode >> 16) & 0xFF), (1 << bits.first_bits) - 1);
+      second_color = esp_scale(((colorcode >> 8) & 0xFF), ((1 << bits.second_bits) - 1));
+      third_color = esp_scale(((colorcode >> 0) & 0xFF), (1 << bits.third_bits) - 1);
+    } else {
       first_color = esp_scale(((colorcode >> (bits.second_bits + bits.third_bits)) & ((1 << bits.first_bits) - 1)),
                               ((1 << bits.first_bits) - 1));
       second_color =
           esp_scale(((colorcode >> bits.third_bits) & ((1 << bits.second_bits) - 1)), ((1 << bits.second_bits) - 1));
       third_color = esp_scale(((colorcode >> 0) & ((1 << bits.third_bits) - 1)), ((1 << bits.third_bits) - 1));
-    } else {
-      first_color = esp_scale(((colorcode >> 16) & 0xFF), (1 << bits.first_bits) - 1);
-      second_color = esp_scale(((colorcode >> 8) & 0xFF), ((1 << bits.second_bits) - 1));
-      third_color = esp_scale(((colorcode >> 0) & 0xFF), (1 << bits.third_bits) - 1);
     }
 
     switch (bitness.color_order) {
@@ -264,7 +261,7 @@ class ColorUtil {
           position = 7 - (position % bitness.pixel_devider());
         uint8_t pixel_pos = (position % bitness.pixel_devider()) * (8 / bitness.pixel_devider());
         uint8_t mask = ((1 << (0x10 >> bitness.devider)) - 1) << pixel_pos;
-        result = (old_color &  ~mask) | (result<< pixel_pos);
+        result = (old_color & ~mask) | (result << pixel_pos);
       }
       return result;
     }
@@ -275,32 +272,46 @@ class ColorUtil {
     red_color = esp_scale8(color.red, ((1 << bits.first_bits) - 1));
     green_color = esp_scale8(color.green, ((1 << bits.second_bits) - 1));
     blue_color = esp_scale8(color.blue, (1 << bits.third_bits) - 1);
-    if (bitness.right_aligned) {
+    if (bitness.byte_aligned) {
       switch (bitness.color_order) {
         case COLOR_ORDER_RGB:
-          color_val = red_color << (bits.third_bits + bits.second_bits) | green_color << bits.third_bits | blue_color;
+          color_val = red_color << 16 | green_color << 8 | blue_color;
+          break;
         case COLOR_ORDER_BGR:
-          color_val = blue_color << (bits.first_bits + bits.second_bits) | green_color << bits.first_bits | red_color;
+          color_val = blue_color << 16 | green_color << 8 | red_color;
+          break;
         case COLOR_ORDER_GRB:
-          color_val = green_color << (bits.third_bits + bits.first_bits) | red_color << bits.third_bits | blue_color;
+          color_val = green_color << 16 | red_color << 8 | blue_color;
+          break;
       }
     } else {
       switch (bitness.color_order) {
         case COLOR_ORDER_RGB:
-          color_val = red_color << 16 | green_color << 8 | blue_color;
+          color_val = red_color << (bits.third_bits + bits.second_bits) | green_color << bits.third_bits | blue_color;
+          break;
         case COLOR_ORDER_BGR:
-          color_val = blue_color << 16 | green_color << 8 | red_color;
+          color_val = blue_color << (bits.first_bits + bits.second_bits) | green_color << bits.first_bits | red_color;
+          break;
         case COLOR_ORDER_GRB:
-          color_val = green_color << 16 | red_color << 8 | blue_color;
+          color_val = green_color << (bits.third_bits + bits.first_bits) | red_color << bits.third_bits | blue_color;
+          break;
       }
     }
     if (bitness.little_endian && bitness.bytes_per_pixel > 1) {
       if (bitness.bytes_per_pixel == 2) {
-        color_val = (color_val & 0xff00 >> 8) + (color_val & 0x00ff << 8);
+        color_val = ((color_val & 0xff00) >> 8) | ((color_val & 0x00ff) << 8);
       } else {
-        color_val = (color_val & 0xff0000 >> 16) + (color_val & 0x0000ff << 16) + (color_val & 0x00ff00);
+        color_val = ((color_val & 0xff0000) >> 16) | ((color_val & 0x0000ff) << 16) | (color_val & 0x00ff00);
       }
     }
+    if (last_value != color_val) {
+      ESP_LOGI(TAGC, "Color Order  : %s", ColorOrderStr[bitness.color_order]);
+      ESP_LOGI(TAGC, "colors  R:%02x.%d G:%02x.%d B:%02x.%d  ", red_color, bits.first_bits, green_color,
+               bits.second_bits, blue_color, bits.third_bits);
+      ESP_LOGI(TAGC, "combined colors  0x%06x", color_val);
+      last_value = color_val;
+    }
+
     return color_val;
   }
 

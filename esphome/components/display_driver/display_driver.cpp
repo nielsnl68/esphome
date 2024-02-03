@@ -97,8 +97,6 @@ void DisplayDriver::finalize_init_values() {
   this->bus_->send_command(ILI9XXX_MADCTL, &mad, 1);
   this->bus_->send_command(ILI9XXX_PIXFMT, &pix, 1);
   this->display_bitness_.color_order = MADCTL_RGB;
-  // this->display_bitness_.little_endian = true;
-  // this->display_bitness_.byte_aligned = true;
 }
 
 void DisplayDriver::setup_lcd() {
@@ -153,7 +151,7 @@ bool DisplayDriver::setup_buffer() {
     case 1:  // 2 pixels per byte
       this->buffer_ = allocator.allocate(this->get_buffer_size_());
       if (this->buffer_ != nullptr) {
-        return true;
+        break;
         ;
       }
       ESP_LOGW(TAG, "Not enough (ps)ram memory for 2 Pixels per byte.");
@@ -161,7 +159,7 @@ bool DisplayDriver::setup_buffer() {
     case 2:  // 4 pixels per byte
       this->buffer_ = allocator.allocate(this->get_buffer_size_());
       if (this->buffer_ != nullptr) {
-        return true;
+        break;
         ;
       }
       ESP_LOGW(TAG, "Not enough (ps)ram memory for 4 Pixels per byte.");
@@ -173,13 +171,13 @@ bool DisplayDriver::setup_buffer() {
         this->mark_failed();
         return false;
       }
-      return true;
+      break;
     default:
       switch (this->buffer_bitness_.bytes_per_pixel) {
         case 3:
           this->buffer_ = allocator.allocate(this->get_buffer_size_());
           if (this->buffer_ != nullptr) {
-            return true;
+            break;
             ;
           }
           ESP_LOGW(TAG, "Not enough (ps)ram memory for 3byte colors.");
@@ -188,7 +186,7 @@ bool DisplayDriver::setup_buffer() {
         case 2:
           this->buffer_ = allocator.allocate(this->get_buffer_size_());
           if (this->buffer_ != nullptr) {
-            return true;
+            break;
           }
           ESP_LOGW(TAG, "Not enough (ps)ram memory for 2byte colors.");
           if (this->palette_ = nullptr) {
@@ -203,10 +201,13 @@ bool DisplayDriver::setup_buffer() {
             this->mark_failed();
             return false;
           }
-          return true;
+          break;
       }
   }
+  memset(this->buffer_, 0, this->get_buffer_size_());
+  return true;
 }
+
 void DisplayDriver::dump_config() {
   LOG_DISPLAY("", "Display Driver:", this);
   this->padding_.info("display window:");
@@ -230,21 +231,40 @@ void DisplayDriver::dump_config() {
 }
 
 void DisplayDriver::fill(Color color) {
-  ESP_LOGD(TAG, "fill");
-  if (!this->setup_buffer())
-    return;
+  ColorBitness old_bitmess;
+  old_bitmess.raw_16 = this->buffer_bitness_.raw_16;
+  if (this->buffer_ == nullptr) {
+    ESP_LOGD(TAG, "Fill Direct");
+    this->buffer_bitness_.raw_16 = this->display_bitness_.raw_16;
+    this->bus_->start();
+    this->set_addr_window(0, 0, this->width_, this->height_);
+  } else {
+    ESP_LOGD(TAG, "Fill Buffer");
+  }
+  auto now = millis();
   uint8_t bytes_per_pixel = this->buffer_bitness_.bytes_per_pixel;
-  const uint8_t *addr = this->buffer_;
-  const uint8_t *end_addr = addr + this->get_buffer_size_();
+  size_t pixel = 0U, last_pixel = this->get_buffer_size_();
   uint32_t new_color = ColorUtil::from_color(color, this->buffer_bitness_, this->palette_);
+  const uint8_t *addr = this->buffer_;
 
   while (true) {
-    memcpy((void *) addr, (const void *) &new_color, bytes_per_pixel);
-    addr += bytes_per_pixel;
-    if (addr == end_addr)
+    if (this->buffer_ == nullptr) {
+      this->bus_->send_data((uint8_t *) &new_color, bytes_per_pixel);
+    } else {
+      memcpy((void *) addr, (const void *) &new_color, bytes_per_pixel);
+      addr += bytes_per_pixel;
+    }
+    pixel = pixel + (size_t) bytes_per_pixel;
+    if (pixel == last_pixel)
       break;
   }
-  this->view_port_ = Rect(0, 0, this->width_, this->height_);
+  if (this->buffer_ == nullptr) {
+    this->bus_->end();
+  } else {
+    this->view_port_ = Rect(0, 0, this->width_, this->height_);
+  }
+  this->buffer_bitness_.raw_16 = old_bitmess.raw_16;
+  ESP_LOGD(TAG, "Data write took %dms %d", (unsigned) (millis() - now), pixel);
 }
 
 // Tell the display controller where we want to draw pixels.
@@ -287,13 +307,11 @@ void DisplayDriver::display_buffer() {
 
 bool DisplayDriver::send_buffer(const uint8_t *data, int x_display, int y_display, int x_in_data, int y_in_data,
                                 int width, int height, ColorBitness bitness, int x_pad) {
-  ESP_LOGD(TAG, "Start display(display:[%d, %d], in_data:[%d + %d, %d], dimension:[%d, %d]", x_display, y_display,
-           x_in_data, x_pad, y_in_data, width, height);
-
-  size_t data_width = width + x_pad;
+  size_t data_width = width + x_pad + x_in_data;
   uint8_t bytes_per_pixel = bitness.bytes_per_pixel;
   uint8_t devider = bitness.pixel_devider();
-
+  ESP_LOGD(TAG, "Start display(display:[%d, %d], in_data:[%d + %d, %d], dimension:[%d, %d] %d", x_display, y_display,
+           x_in_data, x_pad, y_in_data, width, height, data_width);
   auto now = millis();
 
   this->bus_->start();

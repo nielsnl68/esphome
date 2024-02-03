@@ -297,21 +297,22 @@ class ColorUtil {
           break;
       }
     }
-    if (bitness.little_endian && bitness.bytes_per_pixel > 1) {
+    if (!bitness.little_endian && bitness.bytes_per_pixel > 1) {
       if (bitness.bytes_per_pixel == 2) {
         color_val = ((color_val & 0xff00) >> 8) | ((color_val & 0x00ff) << 8);
       } else {
         color_val = ((color_val & 0xff0000) >> 16) | ((color_val & 0x0000ff) << 16) | (color_val & 0x00ff00);
       }
     }
-    if (last_value != color_val) {
-      ESP_LOGI(TAGC, "Color Order  : %s", ColorOrderStr[bitness.color_order]);
-      ESP_LOGI(TAGC, "colors  R:%02x.%d G:%02x.%d B:%02x.%d  ", red_color, bits.first_bits, green_color,
-               bits.second_bits, blue_color, bits.third_bits);
-      ESP_LOGI(TAGC, "combined colors  0x%06x", color_val);
-      last_value = color_val;
-    }
-
+    /*
+        if (false && last_value != color_val) {
+          ESP_LOGI(TAGC, "Color Order  : %s", ColorOrderStr[bitness.color_order]);
+          ESP_LOGI(TAGC, "colors  R:%02x.%d G:%02x.%d B:%02x.%d  ", red_color, bits.first_bits, green_color,
+                   bits.second_bits, blue_color, bits.third_bits);
+          ESP_LOGI(TAGC, "combined colors  0x%06x", color_val);
+          last_value = color_val;
+        }
+    */
     return color_val;
   }
 

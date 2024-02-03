@@ -23,6 +23,8 @@ void Rect::include(int16_t x, int16_t y) {
     this->w = 1;
     this->h = 1;
   } else {
+    if (inside(x,y, true))
+      return;
     if (x < this->x) {
       this->w += (x - this->x);
       this->x = x;

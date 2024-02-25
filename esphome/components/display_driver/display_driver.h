@@ -23,8 +23,13 @@ class displayInterface {
   inline void send_data(const uint8_t data) { this->send_data(&data, 1); }
   void send_data(const uint8_t *data, size_t len = 1);
 
-  virtual void start(){};
-  virtual void end(){};
+  virtual void send_pixels(const uint8_t *data, size_t len = 1) { this->send_data(data, len); }
+
+  virtual void begin_commands(){};
+  virtual void end_commands(){};
+
+  virtual void begin_pixels() { this->begin_commands(); }
+  virtual void end_pixels() { this->end_commands(); }
 
   virtual void dump_config(){};
 
@@ -48,8 +53,10 @@ class SPI_Interface : public displayInterface,
  public:
   void setup();
   void set_dc_pin(GPIOPin *dc_pin) { this->dc_pin_ = dc_pin; }
-  void start() override;
-  void end() override;
+
+  void begin_commands() override;
+  void end_commands() override;
+  
   void dump_config() override;
 
  protected:

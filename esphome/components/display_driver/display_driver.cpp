@@ -103,7 +103,7 @@ void DisplayDriver::setup_lcd() {
   uint8_t cmd, x, num_args;
   const uint8_t *addr = this->init_sequence_;
 
-  this->bus_->start();
+  this->bus_->begin_commands();
 
   while ((cmd = *addr++) > 0) {
     x = *addr++;
@@ -114,13 +114,13 @@ void DisplayDriver::setup_lcd() {
     this->bus_->send_command(cmd, addr, num_args);
     addr += num_args;
     if (x & 0x80) {
-      this->bus_->end();
+      this->bus_->end_commands();
       delay(150);  // NOLINT
-      this->bus_->start();
+      this->bus_->begin_commands();
     }
   }
 
-  this->bus_->end();
+  this->bus_->end_commands();
 
   ESP_LOGD(TAG, "done Init ");
 }
@@ -236,8 +236,9 @@ void DisplayDriver::fill(Color color) {
   if (this->buffer_ == nullptr) {
     ESP_LOGD(TAG, "Fill Direct");
     this->buffer_bitness_.raw_16 = this->display_bitness_.raw_16;
-    this->bus_->start();
+
     this->set_addr_window(0, 0, this->width_, this->height_);
+    this->bus_->begin_pixels();
   } else {
     ESP_LOGD(TAG, "Fill Buffer");
   }
@@ -249,7 +250,7 @@ void DisplayDriver::fill(Color color) {
 
   while (true) {
     if (this->buffer_ == nullptr) {
-      this->bus_->send_data((uint8_t *) &new_color, bytes_per_pixel);
+      this->bus_->send_pixels((uint8_t *) &new_color, bytes_per_pixel);
     } else {
       memcpy((void *) addr, (const void *) &new_color, bytes_per_pixel);
       addr += bytes_per_pixel;
@@ -259,7 +260,7 @@ void DisplayDriver::fill(Color color) {
       break;
   }
   if (this->buffer_ == nullptr) {
-    this->bus_->end();
+    this->bus_->end_pixels();
   } else {
     this->view_port_ = Rect(0, 0, this->width_, this->height_);
   }
@@ -272,7 +273,7 @@ void DisplayDriver::fill(Color color) {
 // return true when the window can be set, orherwise return false.
 
 bool DisplayDriver::set_addr_window(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
-  // this->bus_->start();
+  this->bus_->begin_commands();
 
   this->bus_->send_command(ILI9XXX_CASET);
   this->bus_->send_data(x1 >> 8);
@@ -286,7 +287,7 @@ bool DisplayDriver::set_addr_window(uint16_t x1, uint16_t y1, uint16_t x2, uint1
   this->bus_->send_data(y2 & 0xFF);
   this->bus_->send_command(ILI9XXX_RAMWR);  // Write to RAM
 
-  // this->bus_->end();
+  this->bus_->end_commands();
 
   return true;
 }
@@ -314,7 +315,6 @@ bool DisplayDriver::send_buffer(const uint8_t *data, int x_display, int y_displa
            x_in_data, x_pad, y_in_data, width, height, data_width);
   auto now = millis();
 
-  this->bus_->start();
 
   if (!this->set_addr_window(x_display, y_display, x_display + width - 1, y_display + height - 1)) {
     if (data == this->buffer_) {
@@ -324,10 +324,10 @@ bool DisplayDriver::send_buffer(const uint8_t *data, int x_display, int y_displa
       width = this->width_;
       height = this->height_;
     } else {
-      this->bus_->end();
       return false;
     }
   }
+  this->bus_->begin_pixels();
 
   if (devider > 1) {
     x_in_data = (x_in_data - (x_in_data % devider)) / devider;
@@ -344,7 +344,7 @@ bool DisplayDriver::send_buffer(const uint8_t *data, int x_display, int y_displa
     ESP_LOGD(TAG, "Copy buffer to display vw:%d dw:%d h:%d", view_width, view_width, height);
     for (uint16_t row = 0; row < height; row++) {
       // ESP_LOGD(TAG, "send from : 0x%x Row:%d", addr, row);
-      this->bus_->send_data(addr, view_width);
+      this->bus_->send_pixels(addr, view_width);
       addr += data_width;
       App.feed_wdt();
     }
@@ -374,7 +374,7 @@ bool DisplayDriver::send_buffer(const uint8_t *data, int x_display, int y_displa
           disp_color = 0;
           bytes_send += display_bytes_per_pixel;
           if (bytes_send >= TRANSFER_BUFFER_SIZE - display_bytes_per_pixel) {
-            this->bus_->send_data(this->data_batch_, bytes_send);
+            this->bus_->send_pixels(this->data_batch_, bytes_send);
             bytes_send = 0;
             App.feed_wdt();
           }
@@ -395,11 +395,11 @@ bool DisplayDriver::send_buffer(const uint8_t *data, int x_display, int y_displa
 
     // flush any balance.
     if (bytes_send != 0) {
-      this->bus_->send_data(this->data_batch_, bytes_send);
+      this->bus_->send_pixels(this->data_batch_, bytes_send);
     }
   }
 
-  this->bus_->end();
+  this->bus_->end_pixels();
 
   ESP_LOGD(TAG, "Data write took %dms", (unsigned) (millis() - now));
   return true;
@@ -484,19 +484,19 @@ void HOT DisplayDriver::buffer_pixel_at(int x, int y, Color color) {
 // ======================== displayInterface
 
 void displayInterface::send_command(uint8_t command, const uint8_t *data, size_t len) {
-  this->start();
+  this->begin_commands();
   this->command(command);  // Send the command byte
 
   if (len > 0) {
     this->data(data, len);
   }
-  this->end();
+  this->end_commands();
 }
 
 void displayInterface::send_data(const uint8_t *data, size_t len) {
-  this->start();
+  this->begin_commands();
   this->data(data, len);
-  this->end();
+  this->end_commands();
 }
 
 void displayInterface::command(uint8_t value) {
@@ -536,13 +536,13 @@ void SPI_Interface::end_command() { this->dc_pin_->digital_write(true); }
 
 void SPI_Interface::start_data() { this->dc_pin_->digital_write(true); }
 
-void SPI_Interface::start() {
+void SPI_Interface::begin_commands() {
   if (this->enabled_ == 0) {
     this->enable();
   }
   this->enabled_++;
 }
-void SPI_Interface::end() {
+void SPI_Interface::end_commands() {
   this->enabled_--;
   if (this->enabled_ == 0) {
     this->disable();

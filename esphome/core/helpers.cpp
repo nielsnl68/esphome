@@ -90,6 +90,11 @@ std::string to_string(long double value) { return str_snprintf("%Lf", 32, value)
 
 // Mathematics
 
+static inline void put16_be(uint8_t *buf, uint16_t value) {
+  buf[0] = value >> 8;
+  buf[1] = value;
+}
+
 float lerp(float completion, float start, float end) { return start + (end - start) * completion; }
 uint8_t crc8(uint8_t *data, uint8_t len) {
   uint8_t crc = 0;

@@ -146,6 +146,9 @@ template<> constexpr14 int64_t byteswap(int64_t n) { return __builtin_bswap64(n)
 /// @name Mathematics
 ///@{
 
+/// store a 16 bit value in a buffer, big endian.
+static inline void put16_be(uint8_t *buf, uint16_t value);
+
 /// Linearly interpolate between \p start and \p end by \p completion (between 0 and 1).
 float lerp(float completion, float start, float end);
 

@@ -148,3 +148,12 @@ async def S3Box_to_code(config, var):
 )
 async def S3BoxLite_to_code(config, var):
     return [config, var]
+
+
+@DISPLAY_REGISTRY.register(
+    "RPI_DPI_RGB",
+    display_ns.class_("Display_RPI_DPI_RGB", DisplayDriver),
+    cv.Schema({}),
+)
+async def RPI_RGB_to_code(config, var):
+    return [config, var]

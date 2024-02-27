@@ -3,86 +3,19 @@
 #include "esphome/components/display/display.h"
 #include "esphome/components/display/display_color_utils.h"
 #include "display_defines.h"
+#include "display_iobusses.h"
 
 namespace esphome {
 namespace display {
 
 const size_t TRANSFER_BUFFER_SIZE = 126;  // ensure this is divisible by 6
 
-#ifndef DISPLAY_DATA_RATE
-#define Display_DATA_RATE spi::DATA_RATE_40MHZ
-#endif  // Display_DATA_RATE
-
-class displayInterface {
- public:
-  virtual void setup(){};
-  inline void send_command(uint8_t command) {
-    this->send_command( command, nullptr, 0);
-  }
-  void send_command(uint8_t command, const uint8_t *data, size_t len);
-  inline void send_data(const uint8_t data) { this->send_data(&data, 1); }
-  void send_data(const uint8_t *data, size_t len = 1);
-
-  virtual void send_pixels(const uint8_t *data, size_t len = 1) { this->send_data(data, len); }
-
-  virtual void begin_commands(){};
-  virtual void end_commands(){};
-
-  virtual void begin_pixels() { this->begin_commands(); }
-  virtual void end_pixels() { this->end_commands(); }
-
-  virtual void dump_config(){};
-
- protected:
-  virtual void start_command() = 0;
-  virtual void end_command(){};
-  virtual void start_data() = 0;
-  virtual void end_data(){};
-
-  virtual void command(uint8_t value);
-  virtual void data(const uint8_t *value, size_t len);
-  virtual void send_byte(uint8_t data)=0;
-  virtual void send_array(const uint8_t *data, size_t len) = 0;
-
-  bool always_start_{false};
-};
-
-class SPI_Interface : public displayInterface,
-                      public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARITY_LOW, spi::CLOCK_PHASE_LEADING,
-                                            Display_DATA_RATE> {
- public:
-  void setup();
-  void set_dc_pin(GPIOPin *dc_pin) { this->dc_pin_ = dc_pin; }
-
-  void begin_commands() override;
-  void end_commands() override;
-  
-  void dump_config() override;
-
- protected:
-  void start_command() override;
-  void end_command() override;
-  void start_data() override;
-
-  void send_byte(uint8_t data) override;
-  void send_array(const uint8_t *data, size_t len) override;
-  GPIOPin *dc_pin_{nullptr};
-  int enabled_{0};
-};
-
-class SPI16D_Interface : public SPI_Interface {
-  void dump_config() override;
-
- protected:
-  void data(const uint8_t *value, size_t len) override;
-};
-
 class DisplayDriver : public Display {
  public:
   DisplayDriver() = default;
   DisplayDriver(uint8_t const *init_sequence, int16_t width, int16_t height, bool invert_colors);
 
-  void set_interface(displayInterface *interface) { this->bus_ = interface; }
+  void set_interface(IOBus *interface) { this->bus_ = interface; }
   void set_reset_pin(GPIOPin *reset) { this->reset_pin_ = reset; }
   void set_palette(const uint8_t *palette) { this->palette_ = palette; }
 
@@ -133,7 +66,7 @@ class DisplayDriver : public Display {
 
   void reset_();
 
-  displayInterface* bus_{nullptr};
+  IOBus *bus_{nullptr};
   const uint8_t *init_sequence_{};
   Rect view_port_{};
   const uint8_t *palette_;
@@ -152,7 +85,7 @@ class DisplayDriver : public Display {
   bool mirror_y_{};
 
   uint8_t *buffer_{nullptr};
-  uint8_t *data_batch_{nullptr};
+  uint8_t *batch_buffer_{nullptr};
 };
 
 }  // namespace display

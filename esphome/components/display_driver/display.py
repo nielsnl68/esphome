@@ -21,6 +21,8 @@ from esphome.const import (
     CONF_TRANSFORM,
     CONF_INVERT_COLORS,
     CONF_TYPE,
+    CONF_OUTPUT,
+    CONF_DATA_PINS,
 )
 from .drivers import validate_model_registry, load_display_driver, DisplayDriver
 
@@ -33,17 +35,35 @@ def AUTO_LOAD():
     return []
 
 
-CODEOWNERS = ["@nielsnl68", "@clydebarrow"]
-
 CONF_COLOR_PALETTE_ENUM = cv.one_of("NONE", "GRAYSCALE", "IMAGE_ADAPTIVE")
 CONF_COLOR_PALETTE_ID = "color_palette_id"
 CONF_COLOR_PALETTE_IMAGES = "color_palette_images"
 CONF_INTERFACE = "interface"
 CONF_18BIT_MODE = "18bit_mode"
 
+CONF_BUS_ID = "bus_id"
+CONF_DE_PIN = "de_pin"
+
+CONF_PCLK_PIN = "pclk_pin"
+CONF_PCLK_FREQUENCY = "pclk_frequency"
+CONF_PCLK_INVERTED = "pclk_inverted"
+
+CONF_HSYNC_PIN = "hsync_pin"
+CONF_HSYNC_PULSE_WIDTH = "hsync_pulse_width"
+CONF_HSYNC_FRONT_PORCH = "hsync_front_porch"
+CONF_HSYNC_BACK_PORCH = "hsync_back_porch"
+
+CONF_VSYNC_PIN = "vsync_pin"
+CONF_VSYNC_PULSE_WIDTH = "vsync_pulse_width"
+CONF_VSYNC_FRONT_PORCH = "vsync_front_porch"
+CONF_VSYNC_BACK_PORCH = "vsync_back_porch"
+
+
 displayInterface = display_ns.class_("displayInterface")
-SPI_Interface = display_ns.class_("SPI_Interface", displayInterface)
-SPI16D_Interface = display_ns.class_("SPI16D_Interface", displayInterface)
+SPI_Interface = display_ns.class_("SPIBus", displayInterface)
+SPI16D_Interface = display_ns.class_("SPI16DBus", displayInterface)
+RGB_Interface = display_ns.class_("RGBBus", SPI_Interface)
+
 
 ColorMode = display_ns.enum("ColorMode")
 
@@ -82,8 +102,12 @@ def _validate(config):
     return config
 
 
-CONF_BUS_ID = "bus_id"
-
+DATA_PIN_SCHEMA = pins.gpio_pin_schema(
+    {
+        CONF_OUTPUT: True,
+    },
+    internal=True,
+)
 
 INTERFACE_SCHEMA = cv.typed_schema(
     {
@@ -98,6 +122,32 @@ INTERFACE_SCHEMA = cv.typed_schema(
                 cv.GenerateID(CONF_BUS_ID): cv.declare_id(SPI16D_Interface),
                 cv.Required(CONF_DC_PIN): pins.gpio_output_pin_schema,
             }
+        ),
+        "DPI_RGB": cv.All(
+            cv.Schema(
+                {
+                    cv.Required(CONF_DATA_PINS): cv.All(
+                        [DATA_PIN_SCHEMA],
+                        cv.Length(min=16, max=16, msg="Exactly 16 data pins required"),
+                    ),
+                    cv.Required(CONF_DE_PIN): pins.internal_gpio_output_pin_schema,
+                    cv.Optional(CONF_RESET_PIN): pins.gpio_output_pin_schema,
+                    cv.Required(CONF_PCLK_PIN): pins.internal_gpio_output_pin_schema,
+                    cv.Optional(CONF_PCLK_FREQUENCY, default="16MHz"): cv.All(
+                        cv.frequency, cv.Range(min=4e6, max=30e6)
+                    ),
+                    cv.Optional(CONF_PCLK_INVERTED, default=True): cv.boolean,
+                    cv.Required(CONF_HSYNC_PIN): pins.internal_gpio_output_pin_schema,
+                    cv.Optional(CONF_HSYNC_PULSE_WIDTH, default=10): cv.int_,
+                    cv.Optional(CONF_HSYNC_BACK_PORCH, default=10): cv.int_,
+                    cv.Optional(CONF_HSYNC_FRONT_PORCH, default=20): cv.int_,
+                    cv.Required(CONF_VSYNC_PIN): pins.internal_gpio_output_pin_schema,
+                    cv.Optional(CONF_VSYNC_PULSE_WIDTH, default=10): cv.int_,
+                    cv.Optional(CONF_VSYNC_BACK_PORCH, default=10): cv.int_,
+                    cv.Optional(CONF_VSYNC_FRONT_PORCH, default=10): cv.int_,
+                },
+            ),
+            cv.only_with_esp_idf,
         ),
     },
     default_type="SPI",
@@ -143,17 +193,8 @@ CONFIG_SCHEMA = cv.All(
 )
 
 
-async def to_code(config):
-    (type_id, function_) = await load_display_driver(config[CONF_MODEL])
-
-    rhs = type_id.new()
-
-    var = cg.Pvariable(config[CONF_ID], rhs)
-    await display.register_display(var, config)
+async def register_display_iobus(config, var):
     bus_config = config[CONF_INTERFACE]
-
-    (config, var) = await function_(config, var)
-
     bus = cg.new_Pvariable(bus_config[CONF_BUS_ID])
     cg.add(var.set_interface(bus))
 
@@ -162,10 +203,50 @@ async def to_code(config):
         dc = await cg.gpio_pin_expression(bus_config[CONF_DC_PIN])
         cg.add(bus.set_dc_pin(dc))
 
-    if bus_config[CONF_TYPE] == "SPI16D":
+    elif bus_config[CONF_TYPE] == "SPI16D":
         await spi.register_spi_device(bus, bus_config)
         dc = await cg.gpio_pin_expression(bus_config[CONF_DC_PIN])
         cg.add(bus.set_dc_pin(dc))
+
+    elif bus_config[CONF_TYPE] == "DPI_RGB":
+        pin = await cg.gpio_pin_expression(config[CONF_HSYNC_PIN])
+        cg.add(bus.set_hsync_pin(pin))
+        cg.add(bus.set_hsync_pulse_width(config[CONF_HSYNC_PULSE_WIDTH]))
+        cg.add(bus.set_hsync_back_porch(config[CONF_HSYNC_BACK_PORCH]))
+        cg.add(bus.set_hsync_front_porch(config[CONF_HSYNC_FRONT_PORCH]))
+
+        pin = await cg.gpio_pin_expression(config[CONF_VSYNC_PIN])
+        cg.add(bus.set_vsync_pin(pin))
+        cg.add(bus.set_vsync_pulse_width(config[CONF_VSYNC_PULSE_WIDTH]))
+        cg.add(bus.set_vsync_back_porch(config[CONF_VSYNC_BACK_PORCH]))
+        cg.add(bus.set_vsync_front_porch(config[CONF_VSYNC_FRONT_PORCH]))
+
+        pin = await cg.gpio_pin_expression(config[CONF_PCLK_PIN])
+        cg.add(bus.set_pclk_pin(pin))
+        cg.add(bus.set_pclk_inverted(config[CONF_PCLK_INVERTED]))
+        cg.add(bus.set_pclk_frequency(config[CONF_PCLK_FREQUENCY]))
+
+        index = 0
+        for pin in config[CONF_DATA_PINS]:
+            data_pin = await cg.gpio_pin_expression(pin)
+            cg.add(bus.add_data_pin(data_pin, index))
+            index += 1
+
+        pin = await cg.gpio_pin_expression(config[CONF_DE_PIN])
+        cg.add(bus.set_de_pin(pin))
+
+
+async def to_code(config):
+    (type_id, function_) = await load_display_driver(config[CONF_MODEL])
+
+    rhs = type_id.new()
+
+    var = cg.Pvariable(config[CONF_ID], rhs)
+    await display.register_display(var, config)
+
+    (config, var) = await function_(config, var)
+
+    await register_display_iobus(config, var)
 
     if CONF_COLOR_ORDER in config:
         cg.add(var.set_color_order(COLOR_ORDERS[config[CONF_COLOR_ORDER]]))

@@ -28,11 +28,11 @@ spi:
     number: 12
     ignore_strapping_warning: true
 
-display:
+display_driver:
   - id: my_display
-    platform: display_driver
+    platform: ili9xxx
+    model: M5STACK
     dimensions: 480x320
-    model: ST7796
     interface:
       type: spi
       cs_pin:

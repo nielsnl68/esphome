@@ -1,43 +1,16 @@
 #pragma once
 #include "esphome/core/helpers.h"
-#include "display_driver.h"
+#include "esphome/components/display_driver/display_driver.h"
+#include "display_defines.h"
 #include <cinttypes>
 
 namespace esphome {
 namespace display {
 
 // clang-format off
-static const uint8_t PROGMEM INITCMD_M5STACK[] = {
-  0xEF, 3, 0x03, 0x80, 0x02,
-  0xCF, 3, 0x00, 0xC1, 0x30,
-  0xED, 4, 0x64, 0x03, 0x12, 0x81,
-  0xE8, 3, 0x85, 0x00, 0x78,
-  0xCB, 5, 0x39, 0x2C, 0x00, 0x34, 0x02,
-  0xF7, 1, 0x20,
-  0xEA, 2, 0x00, 0x00,
-  ILI9XXX_PWCTR1  , 1, 0x23,             // Power control VRH[5:0]
-  ILI9XXX_PWCTR2  , 1, 0x10,             // Power control SAP[2:0];BT[3:0]
-  ILI9XXX_VMCTR1  , 2, 0x3e, 0x28,       // VCM control
-  ILI9XXX_VMCTR2  , 1, 0x86,             // VCM control2
-  ILI9XXX_MADCTL  , 1, MADCTL_BGR,       // Memory Access Control
-  ILI9XXX_VSCRSADD, 1, 0x00,             // Vertical scroll zero
-  ILI9XXX_PIXFMT  , 1, 0x55,
-  ILI9XXX_FRMCTR1 , 2, 0x00, 0x13,
-  ILI9XXX_DFUNCTR , 3, 0x08, 0x82, 0x27, // Display Function Control
-  0xF2, 1, 0x00,                         // 3Gamma Function Disable
-  ILI9XXX_GAMMASET , 1, 0x01,             // Gamma curve selected
-  ILI9XXX_GMCTRP1 , 15, 0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, // Set Gamma
-                        0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03,
-                        0x0E, 0x09, 0x00,
-  ILI9XXX_GMCTRN1 , 15, 0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, // Set Gamma
-                        0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C,
-                        0x31, 0x36, 0x0F,
-  ILI9XXX_SLPOUT  , 0x80,                // Exit Sleep
-  ILI9XXX_DISPON  , 0x80,                // Display on
-  0x00                                   // End of list
-};
 
 static const uint8_t PROGMEM INITCMD_M5CORE[] = {
+  ILI9XXX_DISPOFF , 0,                // Display on
   ILI9XXX_SETEXTC, 3, 0xFF,0x93,0x42,   // Turn on the external command
   ILI9XXX_PWCTR1 , 2, 0x12, 0x12,
   ILI9XXX_PWCTR2 , 1, 0x03,
@@ -48,15 +21,14 @@ static const uint8_t PROGMEM INITCMD_M5CORE[] = {
   ILI9XXX_GMCTRN1,15, 0x00,0x0B,0x11,0x05,0x13,0x09,0x33,0x67,0x48,0x07,0x0E,0x0B,0x2E,0x33,0x0F,
   ILI9XXX_DFUNCTR, 4, 0x08,0x82,0x1D,0x04,
   ILI9XXX_IDMOFF , 0,
-  ILI9XXX_DISPON , 0x80,                // Display on
   ILI9XXX_SLPOUT , 0x80,                // Exit Sleep
-
   0x00                                   // End of list
 };
 
 
 
 static const uint8_t PROGMEM INITCMD_ILI9341[] = {
+  ILI9XXX_DISPOFF , 0,                // Display on
   0xEF, 3, 0x03, 0x80, 0x02,
   0xCF, 3, 0x00, 0xC1, 0x30,
   0xED, 4, 0x64, 0x03, 0x12, 0x81,
@@ -82,11 +54,11 @@ static const uint8_t PROGMEM INITCMD_ILI9341[] = {
                         0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C,
                         0x31, 0x36, 0x0F,
   ILI9XXX_SLPOUT  , 0x80,                // Exit Sleep
-  ILI9XXX_DISPON  , 0x80,                // Display on
   0x00                                   // End of list
 };
 
 static const uint8_t PROGMEM INITCMD_ILI9481[] = {
+  ILI9XXX_DISPOFF , 0,                // Display on
   ILI9XXX_SLPOUT ,  0x80,    // Exit sleep mode
   ILI9XXX_PWSET  , 3, 0x07, 0x41, 0x1D,
   ILI9XXX_VMCTR  , 3, 0x00, 0x1C, 0x1F,
@@ -102,31 +74,31 @@ static const uint8_t PROGMEM INITCMD_ILI9481[] = {
   ILI9XXX_CSCON , 1, 0x01,
   ILI9XXX_PIXFMT, 1, 0x55,  // 16 bit mode
   ILI9XXX_INVON, 0,
-  ILI9XXX_DISPON, 0x80,     // Set display on
   0x00 // end
 };
 
 static const uint8_t PROGMEM INITCMD_ILI9481_18[] = {
-    ILI9XXX_SLPOUT ,  0x80,    // Exit sleep mode
-    ILI9XXX_PWSET  , 3, 0x07, 0x41, 0x1D,
-    ILI9XXX_VMCTR  , 3, 0x00, 0x1C, 0x1F,
-    ILI9XXX_PWSETN , 2, 0x01, 0x11,
-    ILI9XXX_PWCTR1 , 5, 0x10, 0x3B, 0x00, 0x02, 0x11,
-    ILI9XXX_VMCTR1 , 1, 0x03,
-    ILI9XXX_IFCTR  , 1, 0x83,
-    ILI9XXX_GMCTR  ,12, 0x00, 0x26, 0x21, 0x00, 0x00, 0x1F, 0x65, 0x23, 0x77, 0x00, 0x0F, 0x00,
-    ILI9XXX_IFMODE , 1, 0x00,  // CommandAccessProtect
-    ILI9XXX_PTLAR , 4, 0, 0, 1, 0xDF,
-    0xE4        , 1, 0xA0,
-    ILI9XXX_MADCTL  , 1, MADCTL_MX| MADCTL_BGR,       // Memory Access Control
-    ILI9XXX_CSCON , 1, 0x01,
-    ILI9XXX_PIXFMT, 1, 0x66,  // 18 bit mode
-    ILI9XXX_INVON, 0,
-    ILI9XXX_DISPON, 0x80,     // Set display on
-    0x00 // end
+  ILI9XXX_DISPOFF , 0,                // Display on
+  ILI9XXX_SLPOUT ,  0x80,    // Exit sleep mode
+  ILI9XXX_PWSET  , 3, 0x07, 0x41, 0x1D,
+  ILI9XXX_VMCTR  , 3, 0x00, 0x1C, 0x1F,
+  ILI9XXX_PWSETN , 2, 0x01, 0x11,
+  ILI9XXX_PWCTR1 , 5, 0x10, 0x3B, 0x00, 0x02, 0x11,
+  ILI9XXX_VMCTR1 , 1, 0x03,
+  ILI9XXX_IFCTR  , 1, 0x83,
+  ILI9XXX_GMCTR  ,12, 0x00, 0x26, 0x21, 0x00, 0x00, 0x1F, 0x65, 0x23, 0x77, 0x00, 0x0F, 0x00,
+  ILI9XXX_IFMODE , 1, 0x00,  // CommandAccessProtect
+  ILI9XXX_PTLAR , 4, 0, 0, 1, 0xDF,
+  0xE4        , 1, 0xA0,
+  ILI9XXX_MADCTL  , 1, MADCTL_MX| MADCTL_BGR,       // Memory Access Control
+  ILI9XXX_CSCON , 1, 0x01,
+  ILI9XXX_PIXFMT, 1, 0x66,  // 18 bit mode
+  ILI9XXX_INVON, 0,
+  0x00 // end
 };
 
 static const uint8_t PROGMEM INITCMD_ILI9486[] = {
+  ILI9XXX_DISPOFF , 0,                // Display on
   ILI9XXX_SLPOUT, 0x80,
   ILI9XXX_PIXFMT, 1, 0x55,
   ILI9XXX_PWCTR3, 1, 0x44,
@@ -142,6 +114,8 @@ static const uint8_t PROGMEM INITCMD_ILI9486[] = {
 };
 
 static const uint8_t PROGMEM INITCMD_ILI9488[] = {
+  ILI9XXX_DISPOFF , 0,                // Display off
+
   ILI9XXX_GMCTRP1,15, 0x0f, 0x24, 0x1c, 0x0a, 0x0f, 0x08, 0x43, 0x88, 0x32, 0x0f, 0x10, 0x06, 0x0f, 0x07, 0x00,
   ILI9XXX_GMCTRN1,15, 0x0F, 0x38, 0x30, 0x09, 0x0f, 0x0f, 0x4e, 0x77, 0x3c, 0x07, 0x10, 0x05, 0x23, 0x1b, 0x00,
 
@@ -162,20 +136,15 @@ static const uint8_t PROGMEM INITCMD_ILI9488[] = {
   ILI9XXX_MADCTL,  1, 0x28,
   //ILI9XXX_PIXFMT,  1, 0x55,  // Interface Pixel Format = 16bit
   ILI9XXX_PIXFMT, 1, 0x66,   //ILI9488 only supports 18-bit pixel format in 4/3 wire SPI mode
-
-
-
   // 5 frames
   //ILI9XXX_ETMOD,   1, 0xC6,  //
-
-
   ILI9XXX_SLPOUT,  0x80,    // Exit sleep mode
   //ILI9XXX_INVON  , 0,
-  ILI9XXX_DISPON,  0x80,    // Set display on
   0x00 // end
 };
 
 static const uint8_t PROGMEM INITCMD_ILI9488_A[] = {
+  ILI9XXX_DISPOFF , 0,                // Display off
   ILI9XXX_GMCTRP1,15, 0x00, 0x03, 0x09, 0x08, 0x16, 0x0A, 0x3F, 0x78, 0x4C, 0x09, 0x0A, 0x08, 0x16, 0x1A, 0x0F,
   ILI9XXX_GMCTRN1,15, 0x00, 0x16, 0x19, 0x03, 0x0F, 0x05, 0x32, 0x45, 0x46, 0x04, 0x0E, 0x0D, 0x35, 0x37, 0x0F,
 
@@ -204,14 +173,14 @@ static const uint8_t PROGMEM INITCMD_ILI9488_A[] = {
 
 
   ILI9XXX_SLPOUT,  0x80,    // Exit sleep mode
-  //ILI9XXX_INVON  , 0,
-  ILI9XXX_DISPON,  0x80,    // Set display on
+
   0x00 // end
 };
 
 static const uint8_t PROGMEM INITCMD_ST7796[] = {
   // This ST7796S initilization routine was copied from https://github.com/prenticedavid/Adafruit_ST7796S_kbv/blob/master/Adafruit_ST7796S_kbv.cpp
   ILI9XXX_SWRESET, 0x80,         // Soft reset, then delay 150 ms
+  ILI9XXX_DISPOFF , 0,                // Display off
   ILI9XXX_CSCON, 1, 0xC3,              // ?? Unlock Manufacturer
   ILI9XXX_CSCON, 1, 0x96,
   ILI9XXX_VMCTR1, 1, 0x1C,              //VCOM  Control 1 [1C]
@@ -225,11 +194,11 @@ static const uint8_t PROGMEM INITCMD_ST7796[] = {
   ILI9XXX_CSCON, 1, 0x69,              //?? lock manufacturer commands
   ILI9XXX_CSCON, 1, 0x3C,              //
   ILI9XXX_SLPOUT, 0x80, // Exit Sleep, then delay 150 ms
-  ILI9XXX_DISPON, 0x80, // Main screen turn on, delay 150 ms
   0x00                                   // End of list
 };
 
 static const uint8_t PROGMEM INITCMD_S3BOX[] = {
+  ILI9XXX_DISPOFF , 0,                // Display off
   0xEF, 3, 0x03, 0x80, 0x02,
   0xCF, 3, 0x00, 0xC1, 0x30,
   0xED, 4, 0x64, 0x03, 0x12, 0x81,
@@ -255,11 +224,11 @@ static const uint8_t PROGMEM INITCMD_S3BOX[] = {
                         0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C,
                         0x31, 0x36, 0x0F,
   ILI9XXX_SLPOUT  , 0x80,                // Exit Sleep
-  ILI9XXX_DISPON  , 0x80,                // Display on
   0x00                                   // End of list
 };
 
 static const uint8_t PROGMEM INITCMD_S3BOXLITE[] = {
+  ILI9XXX_DISPOFF , 0,                // Display off
   0xEF, 3, 0x03, 0x80, 0x02,
   0xCF, 3, 0x00, 0xC1, 0x30,
   0xED, 4, 0x64, 0x03, 0x12, 0x81,
@@ -285,13 +254,12 @@ static const uint8_t PROGMEM INITCMD_S3BOXLITE[] = {
                         0x2B, 0x43, 0x42, 0x3B, 0x16, 0x14,
                         0x17, 0x1B,
   ILI9XXX_SLPOUT  , 0x80,                // Exit Sleep
-  ILI9XXX_DISPON  , 0x80,                // Display on
   0x00                                   // End of list
 };
 
 static const uint8_t PROGMEM INITCMD_ST7789V[] = {
   ILI9XXX_SLPOUT  , 0x80,                // Exit Sleep
-  ILI9XXX_DISPON  , 0x80,                // Display on
+  ILI9XXX_DISPOFF , 0,                // Display off
   ILI9XXX_MADCTL  , 1, 0x08,             // Memory Access Control, BGR
   ILI9XXX_DFUNCTR, 2, 0x0A, 0x82,
   ILI9XXX_PIXFMT  , 1, 0x55,
@@ -312,88 +280,192 @@ static const uint8_t PROGMEM INITCMD_ST7789V[] = {
   0x28, 0x31, 0x54, 0x47,
   0x0e, 0x1c, 0x17, 0x1b,
   0x1e,
-  ILI9XXX_DISPON  , 0x80,                // Display on
   0x00                                   // End of list
 };
 
 
+class Ili9xxxDriver : public DisplayDriver {
+ protected:
+  void preset_init_values() override {
+    uint8_t cmd, num_args, bits;
+    const uint8_t *addr = this->init_sequence_;
+
+    while ((cmd = *addr++) != 0) {
+      num_args = *addr++ & 0x7F;
+      bits = *addr;
+      switch (cmd) {
+        case ILI9XXX_MADCTL: {
+          this->swap_xy_ = (bits & MADCTL_MV) != 0;
+          this->mirror_x_ = (bits & MADCTL_MX) != 0;
+          this->mirror_y_ = (bits & MADCTL_MY) != 0;
+          this->display_bitness_.color_order = (bits & MADCTL_BGR) ? COLOR_ORDER_BGR : COLOR_ORDER_RGB;
+          break;
+        }
+
+        case ILI9XXX_PIXFMT: {
+          if ((bits & 0xF) == 6)
+            this->display_bitness_ = ColorBitness::COLOR_BITNESS_666;
+          break;
+        }
+
+        default:
+          break;
+      }
+      addr += num_args;
+    }
+  }
+
+  void finalize_init_values() override {
+    uint8_t pix = this->display_bitness_.bits_per_pixel == ColorBitness::COLOR_BITS_666 ? 0x66 : 0x55;
+    uint8_t mad = this->display_bitness_.color_order == COLOR_ORDER_BGR ? MADCTL_BGR : MADCTL_RGB;
+    if (this->swap_xy_)
+      mad |= MADCTL_MV;
+    if (this->mirror_x_)
+      mad |= MADCTL_MX;
+    if (this->mirror_y_)
+      mad |= MADCTL_MY;
+
+    this->bus_->send_command(this->pre_invertcolors_ ? ILI9XXX_INVON : ILI9XXX_INVOFF);
+    this->bus_->send_command(ILI9XXX_MADCTL, &mad, 1);
+    this->bus_->send_command(ILI9XXX_PIXFMT, &pix, 1);
+    this->display_bitness_.color_order = MADCTL_RGB;
+    delay(50);
+    this->bus_->send_command(ILI9XXX_DISPON);
+    delay(150);
+  }
+  bool set_addr_window(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) override {
+    this->bus_->begin_commands();
+
+    this->bus_->send_command(ILI9XXX_CASET);
+    this->bus_->send_data(x1 >> 8);
+    this->bus_->send_data(x1 & 0xFF);
+    this->bus_->send_data(x2 >> 8);
+    this->bus_->send_data(x2 & 0xFF);
+    this->bus_->send_command(ILI9XXX_PASET);  // Page address set
+    this->bus_->send_data(y1 >> 8);
+    this->bus_->send_data(y1 & 0xFF);
+    this->bus_->send_data(y2 >> 8);
+    this->bus_->send_data(y2 & 0xFF);
+    this->bus_->send_command(ILI9XXX_RAMWR);  // Write to RAM
+
+    this->bus_->end_commands();
+
+    return true;
+  }
+};
+
+
+
 
 
 //-----------   M5Stack display --------------
-class Display_M5Stack : public DisplayDriver {
+static const uint8_t PROGMEM INITCMD_M5STACK[] = {
+  ILI9XXX_DISPOFF , 0,                // Display on
+  0xEF, 3, 0x03, 0x80, 0x02,
+  0xCF, 3, 0x00, 0xC1, 0x30,
+  0xED, 4, 0x64, 0x03, 0x12, 0x81,
+  0xE8, 3, 0x85, 0x00, 0x78,
+  0xCB, 5, 0x39, 0x2C, 0x00, 0x34, 0x02,
+  0xF7, 1, 0x20,
+  0xEA, 2, 0x00, 0x00,
+  ILI9XXX_PWCTR1  , 1, 0x23,             // Power control VRH[5:0]
+  ILI9XXX_PWCTR2  , 1, 0x10,             // Power control SAP[2:0];BT[3:0]
+  ILI9XXX_VMCTR1  , 2, 0x3e, 0x28,       // VCM control
+  ILI9XXX_VMCTR2  , 1, 0x86,             // VCM control2
+  ILI9XXX_MADCTL  , 1, MADCTL_BGR,       // Memory Access Control
+  ILI9XXX_VSCRSADD, 1, 0x00,             // Vertical scroll zero
+  ILI9XXX_PIXFMT  , 1, 0x55,
+  ILI9XXX_FRMCTR1 , 2, 0x00, 0x13,
+  ILI9XXX_DFUNCTR , 3, 0x08, 0x82, 0x27, // Display Function Control
+  0xF2, 1, 0x00,                         // 3Gamma Function Disable
+  ILI9XXX_GAMMASET , 1, 0x01,             // Gamma curve selected
+  ILI9XXX_GMCTRP1 , 15, 0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, // Set Gamma
+                        0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03,
+                        0x0E, 0x09, 0x00,
+  ILI9XXX_GMCTRN1 , 15, 0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, // Set Gamma
+                        0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C,
+                        0x31, 0x36, 0x0F,
+  ILI9XXX_SLPOUT  , 0x80,                // Exit Sleep
+  0x00                                   // End of list
+};
+
+class Display_M5Stack : public Ili9xxxDriver {
  public:
-  Display_M5Stack() : DisplayDriver(INITCMD_M5STACK, 320, 240, true) {}
+  Display_M5Stack() {
+    DisplayDriver(INITCMD_M5STACK, 320, 240, true);
+  }
 };
 
 //-----------   M5Stack display --------------
-class Display_M5CORE : public DisplayDriver {
+class Display_M5CORE : public Ili9xxxDriver {
  public:
-  Display_M5CORE() : DisplayDriver(INITCMD_M5CORE, 320, 240, true) {}
+  Display_M5CORE() { DisplayDriver(INITCMD_M5CORE, 320, 240, true); }
 };
 
 //-----------   ST7789V display --------------
-class Display_ST7789V : public DisplayDriver {
+class Display_ST7789V : public Ili9xxxDriver {
  public:
-  Display_ST7789V() : DisplayDriver(INITCMD_ST7789V, 240, 320, false) {}
+  Display_ST7789V()  {DisplayDriver(INITCMD_ST7789V, 240, 320, false);}
 };
 
 //-----------   Display__24_TFT display --------------
-class Display_ILI9341 : public DisplayDriver {
+class Display_ILI9341 : public Ili9xxxDriver {
  public:
-  Display_ILI9341() : DisplayDriver(INITCMD_ILI9341, 240, 320, false) {}
+  Display_ILI9341() {DisplayDriver(INITCMD_ILI9341, 240, 320, false);}
 };
 
 //-----------   Display__24_TFT rotated display --------------
-class Display_ILI9342 : public DisplayDriver {
+class Display_ILI9342 : public Ili9xxxDriver {
  public:
-  Display_ILI9342() : DisplayDriver(INITCMD_ILI9341, 320, 240, false) {}
+  Display_ILI9342() { DisplayDriver(INITCMD_ILI9341, 320, 240, false); }
 };
 
 //-----------   Display__??_TFT rotated display --------------
-class Display_ILI9481 : public DisplayDriver {
+class Display_ILI9481 : public Ili9xxxDriver {
  public:
-  Display_ILI9481() : DisplayDriver(INITCMD_ILI9481, 480, 320, false) {}
+  Display_ILI9481() { DisplayDriver(INITCMD_ILI9481, 480, 320, false); }
 };
 
 //-----------   ILI9481 in 18 bit mode --------------
-class Display_ILI948118 : public DisplayDriver {
+class Display_ILI948118 : public Ili9xxxDriver {
  public:
-  Display_ILI948118() : DisplayDriver(INITCMD_ILI9481_18, 320, 480, true) {}
+  Display_ILI948118() { DisplayDriver(INITCMD_ILI9481_18, 320, 480, true); }
 };
 
 //-----------   Display__35_TFT rotated display --------------
-class Display_ILI9486 : public DisplayDriver {
+class Display_ILI9486 : public Ili9xxxDriver {
  public:
-  Display_ILI9486() : DisplayDriver(INITCMD_ILI9486, 480, 320, false) {}
+  Display_ILI9486() {DisplayDriver(INITCMD_ILI9486, 480, 320, false); }
 };
 
 //-----------   Display__35_TFT rotated display --------------
-class Display_ILI9488 : public DisplayDriver {
+class Display_ILI9488 : public Ili9xxxDriver {
  public:
-  Display_ILI9488() : DisplayDriver(INITCMD_ILI9488, 480, 320, true) {}
+  Display_ILI9488() { DisplayDriver(INITCMD_ILI9488, 480, 320, true); }
 };
 
 //-----------   Display__35_TFT origin colors rotated display --------------
-class Display_ILI9488A : public DisplayDriver {
+class Display_ILI9488A : public Ili9xxxDriver {
  public:
-  Display_ILI9488A() : DisplayDriver(INITCMD_ILI9488_A, 480, 320, true) {}
+  Display_ILI9488A() { DisplayDriver(INITCMD_ILI9488_A, 480, 320, true); }
 };
 
 //-----------   Display__35_TFT rotated display --------------
-class Display_ST7796 : public DisplayDriver {
+class Display_ST7796 : public Ili9xxxDriver {
  public:
-  Display_ST7796() : DisplayDriver(INITCMD_ST7796, 320, 480, false) {}
+  Display_ST7796() { DisplayDriver(INITCMD_ST7796, 320, 480, false); }
 };
 
-class Display_S3Box : public DisplayDriver {
+class Display_S3Box : public Ili9xxxDriver {
  public:
-  Display_S3Box() : DisplayDriver(INITCMD_S3BOX, 320, 240, false) {}
+  Display_S3Box() { DisplayDriver(INITCMD_S3BOX, 320, 240, false); }
 };
 
-class Display_S3BoxLite : public DisplayDriver {
+class Display_S3BoxLite : public Ili9xxxDriver {
  public:
-  Display_S3BoxLite() : DisplayDriver(INITCMD_S3BOXLITE, 320, 240, true) {}
+  Display_S3BoxLite() {DisplayDriver(INITCMD_S3BOXLITE, 320, 240, true);}
 };
+/**/
 
 // clang-format on
 }  // namespace display

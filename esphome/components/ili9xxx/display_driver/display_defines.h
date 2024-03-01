@@ -1,5 +1,5 @@
 #pragma once
-
+#include <cinttypes>
 namespace esphome {
 namespace display {
 

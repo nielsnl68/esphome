@@ -172,16 +172,14 @@ class BaseFont {
 class Display : public PollingComponent {
  public:
   void update() override;
-  void set_dimensions(int16_t width, int16_t height) {
+  void set_dimensions(uint16_t width, uint16_t height) {
     this->width_ = width;
     this->height_ = height;
-    this->padding_ = Rect(0, this->width_, 0, this->height_);
   }
-
-  void set_dispay_window(uint16_t x_min, uint16_t x_max, uint16_t y_min, uint16_t y_max) {
-   this->padding_ = Rect(x_min, x_max - x_min + 1, y_min, y_max - x_min + 1);
+  void set_offsets(uint16_t offset_x, uint16_t offset_y) {
+    this->offset_x_ = offset_x;
+    this->offset_y_ = offset_y;
   }
-
   /// Get the width of the display in pixels with rotation applied.
   virtual int get_width();
   /// Get the height of the display in pixels with rotation applied.
@@ -579,7 +577,9 @@ class Display : public PollingComponent {
 
   uint16_t width_{0};
   uint16_t height_{0};
-  Rect padding_{};
+
+  uint16_t offset_x_{0};
+  uint16_t offset_y_{0};
 
   bool processing_update_ = false;
   bool needs_update_ = false;

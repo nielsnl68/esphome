@@ -15,8 +15,8 @@ from esphome.const import (
     CONF_WIDTH,
     CONF_HEIGHT,
     CONF_DIMENSIONS,
-    CONF_OFFSET_HEIGHT,
-    CONF_OFFSET_WIDTH,
+    CONF_OFFSET_X,
+    CONF_OFFSET_Y,
 )
 from esphome.core import coroutine_with_priority
 
@@ -43,13 +43,6 @@ DisplayOnPageChangeTrigger = display_ns.class_(
 )
 
 CONF_ON_PAGE_CHANGE = "on_page_change"
-
-CONF_DISPLAY_WINDOW = "display_window"
-CONF_X_MIN = "x_min"
-CONF_X_MAX = "x_max"
-CONF_Y_MIN = "y_min"
-CONF_Y_MAX = "y_max"
-
 
 DISPLAY_ROTATIONS = {
     0: display_ns.DISPLAY_ROTATION_0_DEGREES,
@@ -81,22 +74,10 @@ FULL_DISPLAY_SCHEMA = BASIC_DISPLAY_SCHEMA.extend(
                 {
                     cv.Required(CONF_WIDTH): cv.positive_int,
                     cv.Required(CONF_HEIGHT): cv.positive_int,
-                    cv.Optional(CONF_OFFSET_WIDTH): cv.invalid(
-                        "This variable is depricated. use the 'display_window' variables "
-                    ),
-                    cv.Optional(CONF_OFFSET_HEIGHT): cv.invalid(
-                        "This variable is depricated. use the 'display_window' variables "
-                    ),
+                    cv.Optional(CONF_OFFSET_X, default=0): cv.positive_int,
+                    cv.Optional(CONF_OFFSET_Y, default=0): cv.positive_int,
                 }
             ),
-        ),
-        cv.Optional(CONF_DISPLAY_WINDOW): cv.Schema(
-            {
-                cv.Optional(CONF_X_MIN, default=0): cv.positive_int,
-                cv.Optional(CONF_X_MAX, default=0): cv.positive_int,
-                cv.Optional(CONF_Y_MIN, default=0): cv.positive_int,
-                cv.Optional(CONF_Y_MAX, default=0): cv.positive_int,
-            }
         ),
         cv.Optional(CONF_PAGES): cv.All(
             cv.ensure_list(
@@ -129,19 +110,12 @@ async def setup_display_core_(var, config):
         dimensions = config[CONF_DIMENSIONS]
         if isinstance(dimensions, dict):
             cg.add(var.set_dimensions(dimensions[CONF_WIDTH], dimensions[CONF_HEIGHT]))
+            cg.add(
+                var.set_offsets(dimensions[CONF_OFFSET_X], dimensions[CONF_OFFSET_Y])
+            )
         else:
             (width, height) = dimensions
             cg.add(var.set_dimensions(width, height))
-    if CONF_DISPLAY_WINDOW in config:
-        dimensions = config[CONF_DISPLAY_WINDOW]
-        cg.add(
-            var.set_set_dispay_window(
-                dimensions[CONF_X_MIN],
-                dimensions[CONF_X_MAX],
-                dimensions[CONF_Y_MIN],
-                dimensions[CONF_Y_MAX],
-            )
-        )
 
     if CONF_AUTO_CLEAR_ENABLED in config:
         cg.add(var.set_auto_clear(config[CONF_AUTO_CLEAR_ENABLED]))

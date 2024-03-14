@@ -140,9 +140,9 @@ struct ColorBitness {
 };
 
 struct ColorBits {
-  uint8_t first_bits = 0;
-  uint8_t second_bits = 0;
-  uint8_t third_bits = 0;
+  uint8_t red_bits = 0;
+  uint8_t green_bits = 0;
+  uint8_t blue_bits = 0;
 };
 
 inline static uint8_t esp_scale(uint8_t i, uint8_t scale, uint8_t max_value = 255) { return (max_value * i / scale); }
@@ -155,27 +155,61 @@ class ColorUtil {
     ColorBits result;
     switch (bitness.bits_per_pixel) {
       case ColorBitness::COLOR_BITS_888:
-        result.first_bits = 8;
-        result.second_bits = 8;
-        result.third_bits = 8;
+        result.red_bits = 8;
+        result.green_bits = 8;
+        result.blue_bits = 8;
         break;
       case ColorBitness::COLOR_BITS_666:
-        result.first_bits = 6;
-        result.second_bits = 6;
-        result.third_bits = 6;
+        result.red_bits = 6;
+        result.green_bits = 6;
+        result.blue_bits = 6;
         break;
       case ColorBitness::COLOR_BITS_565:
-        result.first_bits = 5;
-        result.second_bits = 6;
-        result.third_bits = 5;
+        result.red_bits = 5;
+        result.green_bits = 6;
+        result.blue_bits = 5;
         break;
       case ColorBitness::COLOR_BITS_332:
-        result.first_bits = 3;
-        result.second_bits = 3;
-        result.third_bits = 2;
+        result.red_bits = 3;
+        result.green_bits = 3;
+        result.blue_bits = 2;
         break;
     }
     return result;
+  }
+
+  static Color convert(uint8_t *from_color, ColorBitness from_bitness, uint8_t from_position,
+                       uint8_t *to_color, ColorBitness to_bitness, uint8_t to_position,
+                       const uint8_t *palette = nullptr ) {
+    Color color_return = Color::BLACK;
+    uint32_t colorcode = 0;
+    memcpy(from_color, &colorcode, from_bitness.bytes_per_pixel);
+
+    if (from_bitness.little_endian && from_bitness.bytes_per_pixel > 1) {
+      if (from_bitness.bytes_per_pixel == 2) {
+        colorcode = ((colorcode & 0xff00) >> 8) | ((colorcode & 0x00ff) << 8);
+      } else {
+        colorcode = ((colorcode & 0xff0000) >> 16) + ((colorcode & 0x0000ff) << 16) + (colorcode & 0x00ff00);
+      }
+    }
+
+    if (from_bitness.devider > 1) {
+      from_position = (from_position % from_bitness.pixel_devider());
+      if (from_bitness.little_endian)
+        from_position = 7 - from_position;
+      uint8_t pixel_pos = from_position * (8 / from_bitness.pixel_devider());
+      uint8_t mask = ((1 << (0x10 >> from_bitness.devider)) - 1) << pixel_pos;
+      colorcode = (colorcode & mask) >> pixel_pos;
+    }
+
+    if (from_bitness.indexed) {
+      color_return = ColorUtil::index8_to_color_palette888(colorcode, palette);
+    } else if (from_bitness.grayscale) {
+      color_return = color_return.fade_to_white(
+          esp_scale(colorcode & (from_bitness.pixel_devider() - 1), from_bitness.pixel_devider()));
+    } else {
+
+    }
   }
 
   // depricated
@@ -205,7 +239,7 @@ class ColorUtil {
       return color_return.fade_to_white(esp_scale(colorcode & (bitness.pixel_devider() - 1), bitness.pixel_devider()));
     }
 
-    uint8_t first_color, second_color, third_color;
+    uint8_t red_color, green_color, blue_color;
     ColorBits bits = get_color_bits(bitness);
 
     if (bitness.little_endian && bitness.bytes_per_pixel > 1) {
@@ -217,32 +251,32 @@ class ColorUtil {
     }
 
     if (bitness.byte_aligned) {
-      first_color = esp_scale(((colorcode >> 16) & 0xFF), (1 << bits.first_bits) - 1);
-      second_color = esp_scale(((colorcode >> 8) & 0xFF), ((1 << bits.second_bits) - 1));
-      third_color = esp_scale(((colorcode >> 0) & 0xFF), (1 << bits.third_bits) - 1);
+      red_color = esp_scale(((colorcode >> 16) & 0xFF), (1 << bits.red_bits) - 1);
+      green_color = esp_scale(((colorcode >> 8) & 0xFF), ((1 << bits.green_bits) - 1));
+      blue_color = esp_scale(((colorcode >> 0) & 0xFF), (1 << bits.blue_bits) - 1);
     } else {
-      first_color = esp_scale(((colorcode >> (bits.second_bits + bits.third_bits)) & ((1 << bits.first_bits) - 1)),
-                              ((1 << bits.first_bits) - 1));
-      second_color =
-          esp_scale(((colorcode >> bits.third_bits) & ((1 << bits.second_bits) - 1)), ((1 << bits.second_bits) - 1));
-      third_color = esp_scale(((colorcode >> 0) & ((1 << bits.third_bits) - 1)), ((1 << bits.third_bits) - 1));
+      red_color = esp_scale(((colorcode >> (bits.green_bits + bits.blue_bits)) & ((1 << bits.red_bits) - 1)),
+                            ((1 << bits.red_bits) - 1));
+      green_color =
+          esp_scale(((colorcode >> bits.blue_bits) & ((1 << bits.green_bits) - 1)), ((1 << bits.green_bits) - 1));
+      blue_color = esp_scale(((colorcode >> 0) & ((1 << bits.blue_bits) - 1)), ((1 << bits.blue_bits) - 1));
     }
 
     switch (bitness.color_order) {
       case COLOR_ORDER_RGB:
-        color_return.r = first_color;
-        color_return.g = second_color;
-        color_return.b = third_color;
+        color_return.r = red_color;
+        color_return.g = green_color;
+        color_return.b = blue_color;
         break;
       case COLOR_ORDER_BGR:
-        color_return.b = first_color;
-        color_return.g = second_color;
-        color_return.r = third_color;
+        color_return.b = red_color;
+        color_return.g = green_color;
+        color_return.r = blue_color;
         break;
       case COLOR_ORDER_GRB:
-        color_return.g = first_color;
-        color_return.r = second_color;
-        color_return.b = third_color;
+        color_return.g = red_color;
+        color_return.r = green_color;
+        color_return.b = blue_color;
         break;
     }
     return color_return;
@@ -269,9 +303,9 @@ class ColorUtil {
     ColorBits bits = get_color_bits(bitness);
     uint16_t red_color, green_color, blue_color;
     u_int32_t color_val = 0;
-    red_color = esp_scale8(color.red, ((1 << bits.first_bits) - 1));
-    green_color = esp_scale8(color.green, ((1 << bits.second_bits) - 1));
-    blue_color = esp_scale8(color.blue, (1 << bits.third_bits) - 1);
+    red_color = esp_scale8(color.red, ((1 << bits.red_bits) - 1));
+    green_color = esp_scale8(color.green, ((1 << bits.green_bits) - 1));
+    blue_color = esp_scale8(color.blue, (1 << bits.blue_bits) - 1);
     if (bitness.byte_aligned) {
       switch (bitness.color_order) {
         case COLOR_ORDER_RGB:
@@ -287,13 +321,13 @@ class ColorUtil {
     } else {
       switch (bitness.color_order) {
         case COLOR_ORDER_RGB:
-          color_val = red_color << (bits.third_bits + bits.second_bits) | green_color << bits.third_bits | blue_color;
+          color_val = red_color << (bits.blue_bits + bits.green_bits) | green_color << bits.blue_bits | blue_color;
           break;
         case COLOR_ORDER_BGR:
-          color_val = blue_color << (bits.first_bits + bits.second_bits) | green_color << bits.first_bits | red_color;
+          color_val = blue_color << (bits.red_bits + bits.green_bits) | green_color << bits.red_bits | red_color;
           break;
         case COLOR_ORDER_GRB:
-          color_val = green_color << (bits.third_bits + bits.first_bits) | red_color << bits.third_bits | blue_color;
+          color_val = green_color << (bits.blue_bits + bits.red_bits) | red_color << bits.blue_bits | blue_color;
           break;
       }
     }
@@ -307,8 +341,8 @@ class ColorUtil {
     /*
         if (false && last_value != color_val) {
           ESP_LOGI(TAGC, "Color Order  : %s", ColorOrderStr[bitness.color_order]);
-          ESP_LOGI(TAGC, "colors  R:%02x.%d G:%02x.%d B:%02x.%d  ", red_color, bits.first_bits, green_color,
-                   bits.second_bits, blue_color, bits.third_bits);
+          ESP_LOGI(TAGC, "colors  R:%02x.%d G:%02x.%d B:%02x.%d  ", red_color, bits.red_bits, green_color,
+                   bits.green_bits, blue_color, bits.blue_bits);
           ESP_LOGI(TAGC, "combined colors  0x%06x", color_val);
           last_value = color_val;
         }

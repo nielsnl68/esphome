@@ -86,8 +86,8 @@ void HOT Display::line(int x1, int y1, int x2, int y2, Color color) {
   }
 }
 
-void Display::draw_pixels_at(const uint8_t *data, int x_display, int y_display, int x_in_data, int y_in_data, int width,
-                             int height, ColorBitness bitness, int x_pad) {
+void Display::draw_pixels_at(int x, int y, const uint8_t *data, int x_in_data, int y_in_data, int width, int height,
+                             ColorBitness bitness, int x_pad) {
   size_t x_low = x_in_data;
   size_t y_low = y_in_data;
   size_t x_high = x_in_data + width - 1;
@@ -96,9 +96,9 @@ void Display::draw_pixels_at(const uint8_t *data, int x_display, int y_display, 
   uint8_t bytes_per_pixel = bitness.bytes_per_pixel;
   uint8_t devider = bitness.pixel_devider();
   uint32_t color_value;
-  uint32_t x_start = x_display;
-  uint32_t x_end = x_display + width - 1;
-  uint32_t y_end = y_display + height - 1;
+  uint32_t x_start = x;
+  uint32_t x_end = x + width - 1;
+  uint32_t y_end = y + height - 1;
 
   if (devider > 1) {
     x_low = (x_low - (x_low % devider)) / devider;
@@ -114,10 +114,10 @@ void Display::draw_pixels_at(const uint8_t *data, int x_display, int y_display, 
   while (true) {
     memcpy((void *) &color_value, (const void *) addr, bytes_per_pixel);
     for (auto buf_part = 0; buf_part < bitness.pixel_devider(); buf_part++) {
-      this->draw_pixel_at(x_start, y_display, ColorUtil::to_color(color_value, bitness, nullptr, buf_part));
+      this->draw_pixel_at(x_start, y, ColorUtil::to_color(color_value, bitness, nullptr, buf_part));
       if (++x_start == x_end) {
-        x_start = x_display;
-        if (++y_display == y_end)
+        x_start = x;
+        if (++y == y_end)
           return;
       }
     }

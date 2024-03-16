@@ -268,21 +268,23 @@ class Display : public PollingComponent {
    * The length of each source buffer line (stride) will be x_in_data + width + x_pad.
    */
 
-  virtual void draw_pixels_at(const uint8_t *data, int x_display, int y_display, int x_in_data, int y_in_data,
-                              int width, int height, ColorBitness bitness, int x_pad = 0);
+  virtual void draw_pixels_at(int x, int y, const uint8_t *data, int x_in_data, int y_in_data, int width, int height,
+                              ColorBitness bitness, int x_pad = 0);
 
   /// Convenience overload for base case where the pixels are packed into the buffer with no gaps (e.g. suits LVGL.)
   // #depricated
-  void draw_pixels_at(int x_start, int y_start, int w, int h, const uint8_t *ptr, ColorOrder order,
-                             ColorBitness bitness, bool big_endian) {
-    this->draw_pixels_at(x_start, y_start, w, h, ptr, order, bitness, big_endian, 0, 0, 0);
+  void draw_pixels_at(int x, int y, int width, int height, const uint8_t *ptr, ColorOrder order, ColorBitness bitness,
+                      bool big_endian) {
+    bitness.color_order = order;
+    bitness.little_endian = !big_endian;
+    this->draw_pixels_at(x, y, ptr, 0, 0, width, height, bitness);
   }
   // #depricated
-  virtual void draw_pixels_at(int x_start, int y_start, int w, int h, const uint8_t *ptr, ColorOrder order,
+  virtual void draw_pixels_at(int x, int y, int width, int height, const uint8_t *ptr, ColorOrder order,
                               ColorBitness bitness, bool big_endian, int x_offset, int y_offset, int x_pad) {
     bitness.color_order = order;
     bitness.little_endian = !big_endian;
-    this->draw_pixels_at(ptr, x_start, y_start, x_offset, y_offset, w, h, bitness, x_pad);
+    this->draw_pixels_at(x, y, ptr, x_offset, y_offset, width, height, bitness, x_pad);
   }
   /// Draw a straight line from the point [x1,y1] to [x2,y2] with the given color.
   void line(int x1, int y1, int x2, int y2, Color color = COLOR_ON);
@@ -656,7 +658,8 @@ class Display : public PollingComponent {
  protected:
   bool clamp_x_(int x, int w, int &min_x, int &max_x);
   bool clamp_y_(int y, int h, int &min_y, int &max_y);
-  void vprintf_(int x, int y, BaseFont *font, Color color, Color background, TextAlign align, const char *format, va_list arg);
+  void vprintf_(int x, int y, BaseFont *font, Color color, Color background, TextAlign align, const char *format,
+                va_list arg);
 
   void do_update_() { do_update(); }
   virtual void do_update();

@@ -34,10 +34,14 @@ void ILI9XXXDisplay::setup() {
   ESP_LOGD(TAG, "Setting up ILI9xxx");
 
   this->setup_pins_();
-  this->init_lcd_();
 
+  this->display_off();
+  this->init_lcd_();
   this->set_madctl();
   this->command(this->pre_invertcolors_ ? ILI9XXX_INVON : ILI9XXX_INVOFF);
+  this->display_on();
+  delay(150);  // NOLINT
+
   this->x_low_ = this->width_;
   this->y_low_ = this->height_;
   this->x_high_ = 0;

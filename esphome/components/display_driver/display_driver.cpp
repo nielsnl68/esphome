@@ -89,7 +89,7 @@ bool DisplayDriver::setup_buffer() {
   }
 
   ExternalRAMAllocator<uint8_t> allocator(ExternalRAMAllocator<uint8_t>::ALLOW_FAILURE);
-  this->buffer_bitness_.raw_16 = this->display_bitness_.raw_16;
+  this->buffer_bitness_.raw = this->display_bitness_.raw;
   switch (this->buffer_bitness_.bytes_per_pixel) {
     case 1:  // 2 pixels per byte
       this->buffer_ = allocator.allocate(this->get_buffer_size_());
@@ -98,7 +98,7 @@ bool DisplayDriver::setup_buffer() {
         ;
       }
       ESP_LOGW(TAG, "Not enough (ps)ram memory for 2 Pixels per byte.");
-      this->buffer_bitness_ = ColorBitness::COLOR_BITNESS_565;
+      this->buffer_bitness_ = ColorBitness::CB565;
     case 2:  // 4 pixels per byte
       this->buffer_ = allocator.allocate(this->get_buffer_size_());
       if (this->buffer_ != nullptr) {
@@ -106,7 +106,7 @@ bool DisplayDriver::setup_buffer() {
         ;
       }
       ESP_LOGW(TAG, "Not enough (ps)ram memory for 4 Pixels per byte.");
-      this->buffer_bitness_ = ColorBitness::COLOR_BITNESS_565;
+      this->buffer_bitness_ = ColorBitness::CB565;
     case 3:  // 8 pixels per byte
       this->buffer_ = allocator.allocate(this->get_buffer_size_());
       if (this->buffer_ == nullptr) {
@@ -124,7 +124,7 @@ bool DisplayDriver::setup_buffer() {
             ;
           }
           ESP_LOGW(TAG, "Not enough (ps)ram memory for 3byte colors.");
-          this->buffer_bitness_ = ColorBitness::COLOR_BITNESS_565;
+          this->buffer_bitness_ = ColorBitness::CB565;
           this->buffer_bitness_.byte_aligned = false;
         case 2:
           this->buffer_ = allocator.allocate(this->get_buffer_size_());
@@ -133,9 +133,9 @@ bool DisplayDriver::setup_buffer() {
           }
           ESP_LOGW(TAG, "Not enough (ps)ram memory for 2byte colors.");
           if (this->palette_ = nullptr) {
-            this->buffer_bitness_ = ColorBitness::COLOR_BITNESS_332;
+            this->buffer_bitness_ = ColorBitness::CB332;
           } else {
-            this->buffer_bitness_ = ColorBitness::COLOR_BITNESS_8I;
+            this->buffer_bitness_ = ColorBitness::CB8I;
           }
         default:
           this->buffer_ = allocator.allocate(this->get_buffer_size_());
@@ -177,10 +177,10 @@ void DisplayDriver::dump_config() {
 
 void DisplayDriver::fill(Color color) {
   ColorBitness old_bitmess;
-  old_bitmess.raw_16 = this->buffer_bitness_.raw_16;
+  old_bitmess.raw = this->buffer_bitness_.raw;
   if (this->buffer_ == nullptr) {
     ESP_LOGD(TAG, "Fill Direct");
-    this->buffer_bitness_.raw_16 = this->display_bitness_.raw_16;
+    this->buffer_bitness_.raw = this->display_bitness_.raw;
 
     this->set_addr_window(0, 0, this->width_, this->height_);
     this->bus_->begin_pixels();
@@ -209,7 +209,7 @@ void DisplayDriver::fill(Color color) {
   } else {
     this->view_port_ = Rect(0, 0, this->width_, this->height_);
   }
-  this->buffer_bitness_.raw_16 = old_bitmess.raw_16;
+  this->buffer_bitness_.raw = old_bitmess.raw;
   ESP_LOGD(TAG, "Fill took %dms %d", (unsigned) (millis() - now), pixel);
 }
 
@@ -231,7 +231,7 @@ void DisplayDriver::display_buffer() {
   }
 }
 
-bool DisplayDriver::send_buffer(const uint8_t *data, int x_display, int y_display, int x_in_data, int y_in_data,
+bool DisplayDriver::send_buffer(int x_display, int y_display, const uint8_t *data, int x_in_data, int y_in_data,
                                 int width, int height, ColorBitness bitness, int x_pad) {
   size_t data_width = width + x_pad + x_in_data;
   uint8_t bytes_per_pixel = bitness.bytes_per_pixel;
@@ -339,7 +339,7 @@ bool DisplayDriver::send_buffer(const uint8_t *data, int x_display, int y_displa
 }
 
 // note that this bypasses the buffer and writes directly to the display.
-void DisplayDriver::draw_pixels_at(const uint8_t *data, int x_display, int y_display, int x_in_data, int y_in_data,
+void DisplayDriver::draw_pixels_at(int x_display, int y_display, const uint8_t *data, int x_in_data, int y_in_data,
                                    int width, int height, ColorBitness bitness, int x_pad) {
   if (width <= 0 || height <= 0)
     return;
@@ -347,11 +347,11 @@ void DisplayDriver::draw_pixels_at(const uint8_t *data, int x_display, int y_dis
   // do color conversion pixel-by-pixel into the buffer and draw it later. If this is happening the user has not
   // configured the renderer well.
   if (this->rotation_ == DISPLAY_ROTATION_0_DEGREES && !this->is_buffered()) {
-    if (this->send_buffer(data, x_display, y_display, x_in_data, y_in_data, width, height, bitness, x_pad)) {
+    if (this->send_buffer(x_display, y_display, data, x_in_data, y_in_data, width, height, bitness, x_pad)) {
       return;
     }
   }
-  Display::draw_pixels_at(data, x_display, y_display, x_in_data, y_in_data, width, height, bitness, x_pad);
+  Display::draw_pixels_at(x_display, y_display, data, x_in_data, y_in_data, width, height, bitness, x_pad);
 }
 
 void DisplayDriver::set_invert_colors(bool invert) {

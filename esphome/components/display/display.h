@@ -9,6 +9,7 @@
 #include "esphome/core/automation.h"
 #include "esphome/core/time.h"
 #include "display_color_utils.h"
+#include "pixel_formats.h"
 
 #ifdef USE_GRAPH
 #include "esphome/components/graph/graph.h"

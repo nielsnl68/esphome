@@ -135,11 +135,11 @@ class DisplayDriver : public Display {
   ColorBitness get_color_depth() { return this->display_bitness_; }
   void set_18bit_mode(bool mode) {
     if (mode) {
-      this->display_bitness_.raw_16 = ColorBitness::COLOR_BITNESS_666;
+      this->display_bitness_.raw = ColorBitness::CB666;
     }
   }
 
-  bool get_18bit_mode() { return this->display_bitness_.bits_per_pixel == ColorBitness::COLOR_BITS_666; }
+  bool get_18bit_mode() { return this->display_bitness_.pixel_mode == ColorBitness::COLOR_BITS_666; }
   void set_color_order(ColorOrder color_order) { this->display_bitness_.color_order = color_order; }
   ColorOrder get_color_order() { return (ColorOrder) this->display_bitness_.color_order; }
 
@@ -156,8 +156,8 @@ class DisplayDriver : public Display {
   void setup() override;
 
   void draw_pixel_at(int x, int y, Color color) override;
-  void draw_pixels_at(const uint8_t *data, int x_display, int y_display, int x_in_data, int y_in_data, int width,
-                      int height, ColorBitness bitness, int x_pad) override;
+  void draw_pixels_at(int x, int y, const uint8_t *data, int x_in_data, int y_in_data, int width, int height,
+                      ColorBitness bitness, int end_pad) override;
 
   bool is_buffered() { return (this->buffer_ != nullptr); }
   float get_setup_priority() const override { return setup_priority::HARDWARE; };
@@ -168,8 +168,8 @@ class DisplayDriver : public Display {
 
   virtual void buffer_pixel_at(int x, int y, Color color);
   virtual bool set_addr_window(uint16_t x, uint16_t y, uint16_t x2, uint16_t y2) { return false; }
-  virtual bool send_buffer(const uint8_t *data, int x_display, int y_display, int x_in_data, int y_in_data, int width,
-                           int height, ColorBitness bitness, int x_pad);
+  virtual bool send_buffer(int x, int y, const uint8_t *data, int x_in_data, int y_in_data, int width, int height,
+                           ColorBitness bitness, int end_pad);
 
   virtual void setup_pins();
   virtual void setup_lcd();
@@ -186,7 +186,7 @@ class DisplayDriver : public Display {
   std::string model_{""};
 
   ColorBitness buffer_bitness_{};
-  ColorBitness display_bitness_{ColorBitness(ColorBitness::COLOR_BITNESS_565)};
+  ColorBitness display_bitness_{ColorBitness(ColorBitness::CB565)};
 
   uint32_t get_buffer_size_();
 

@@ -316,7 +316,7 @@ class Ili9xxxDriver : public DisplayDriver {
   }
 
   void finalize_init_values() override {
-    uint8_t pix = this->display_bitness_.bits_per_pixel == ColorBitness::COLOR_BITS_666 ? 0x66 : 0x55;
+    uint8_t pix = this->display_bitness_.pixel_mode == ColorBitness::COLOR_BITS_666 ? 0x66 : 0x55;
     uint8_t mad = this->display_bitness_.color_order == COLOR_ORDER_BGR ? MADCTL_BGR : MADCTL_RGB;
     if (this->swap_xy_)
       mad |= MADCTL_MV;

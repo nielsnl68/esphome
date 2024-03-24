@@ -243,6 +243,16 @@ class Display : public PollingComponent {
   /// Clear the entire screen by filling it with OFF pixels.
   void clear();
 
+  /// Get the calculated width of the display in pixels with rotation applied.
+  virtual int get_width() { return this->get_width_internal(); }
+  /// Get the calculated height of the display in pixels with rotation applied.
+  virtual int get_height() { return this->get_height_internal(); }
+
+  /// Get the native (original) width of the display in pixels.
+  int get_native_width() { return this->get_width_internal(); }
+  /// Get the native (original) height of the display in pixels.
+  int get_native_height() { return this->get_height_internal(); }
+
   /// Set a single pixel at the specified coordinates to default color.
   inline void draw_pixel_at(int x, int y) { this->draw_pixel_at(x, y, COLOR_ON); }
 
@@ -289,6 +299,13 @@ class Display : public PollingComponent {
   }
   /// Draw a straight line from the point [x1,y1] to [x2,y2] with the given color.
   void line(int x1, int y1, int x2, int y2, Color color = COLOR_ON);
+
+  /// Draw a straight line at the given angle based on the origin [x, y] for a specified length with the given color.
+  void line_at_angle(int x, int y, int angle, int length, Color color = COLOR_ON);
+
+  /// Draw a straight line at the given angle based on the origin [x, y] from a specified start and stop radius with the
+  /// given color.
+  void line_at_angle(int x, int y, int angle, int start_radius, int stop_radius, Color color = COLOR_ON);
 
   /// Draw a horizontal line from the point [x,y] to [x+width,y] with the given color.
   void horizontal_line(int x, int y, int width, Color color = COLOR_ON);
@@ -667,6 +684,9 @@ class Display : public PollingComponent {
 
   void clear_clipping_();
   virtual void display_buffer() {}
+
+  virtual int get_height_internal() = 0;
+  virtual int get_width_internal() = 0;
 
   /**
    * This method fills a triangle using only integer variables by using a

@@ -86,6 +86,21 @@ void HOT Display::line(int x1, int y1, int x2, int y2, Color color) {
   }
 }
 
+void Display::line_at_angle(int x, int y, int angle, int length, Color color) {
+  this->line_at_angle(x, y, angle, 0, length, color);
+}
+
+void Display::line_at_angle(int x, int y, int angle, int start_radius, int stop_radius, Color color) {
+  // Calculate start and end points
+  int x1 = (start_radius * cos(angle * M_PI / 180)) + x;
+  int y1 = (start_radius * sin(angle * M_PI / 180)) + y;
+  int x2 = (stop_radius * cos(angle * M_PI / 180)) + x;
+  int y2 = (stop_radius * sin(angle * M_PI / 180)) + y;
+
+  // Draw line
+  this->line(x1, y1, x2, y2, color);
+}
+
 void Display::draw_pixels_at(int x, int y, const uint8_t *data, int x_in_data, int y_in_data, int width, int height,
                              ColorBitness bitness, int x_pad) {
   size_t x_low = x_in_data;

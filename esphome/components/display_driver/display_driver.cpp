@@ -222,8 +222,8 @@ void DisplayDriver::display_buffer() {
   if ((!this->view_port_.is_set()) || (this->buffer_ == nullptr)) {
     return;
   }
-  if (this->send_buffer(this->buffer_, this->view_port_.x, this->view_port_.y, this->view_port_.x, this->view_port_.y,
-                        this->view_port_.w, this->view_port_.h, this->buffer_bitness_,
+  if (this->send_buffer(this->view_port_.x, this->view_port_.y, this->buffer_bitness_, this->buffer_,
+                        this->view_port_.x, this->view_port_.y, this->view_port_.w, this->view_port_.h,
                         this->width_ - this->view_port_.x2())) {
     // invalidate watermarks
 
@@ -231,16 +231,16 @@ void DisplayDriver::display_buffer() {
   }
 }
 
-bool DisplayDriver::send_buffer(int x_display, int y_display, const uint8_t *data, int x_in_data, int y_in_data,
-                                int width, int height, ColorBitness bitness, int x_pad) {
+bool DisplayDriver::send_buffer(int x, int y, ColorBitness &bitness, const uint8_t *data, int x_in_data, int y_in_data,
+                                int width, int height, int x_pad) {
   size_t data_width = width + x_pad + x_in_data;
   uint8_t bytes_per_pixel = bitness.bytes_per_pixel;
   uint8_t devider = bitness.pixel_devider();
-  ESP_LOGD(TAG, "Start display(display:[%d, %d], in_data:[%d + %d, %d], dimension:[%d, %d] %d", x_display, y_display,
-           x_in_data, x_pad, y_in_data, width, height, data_width);
+  ESP_LOGD(TAG, "Start display(display:[%d, %d], in_data:[%d + %d, %d], dimension:[%d, %d] %d", x, y, x_in_data, x_pad,
+           y_in_data, width, height, data_width);
   auto now = millis();
 
-  if (!this->set_addr_window(x_display, y_display, x_display + width - 1, y_display + height - 1)) {
+  if (!this->set_addr_window(x, y, x + width - 1, y + height - 1)) {
     if (data == this->buffer_) {
       x_pad = 0;
       x_in_data = 0;
@@ -265,12 +265,12 @@ bool DisplayDriver::send_buffer(int x_display, int y_display, const uint8_t *dat
 
   if (bitness == this->display_bitness_) {  //  && sw_time < mw_time
     if (x_in_data == 0 && x_pad == 0 && y_in_data == 0) {
-      this->bus_->send_pixels(Rect(x_display, y_display, width, height), addr, view_width * height);
+      this->bus_->send_pixels(Rect(x, y, width, height), addr, view_width * height);
     } else {
       ESP_LOGD(TAG, "Copy buffer to display vw:%d dw:%d h:%d", view_width, view_width, height);
       for (uint16_t row = 0; row < height; row++) {
         // ESP_LOGD(TAG, "send from : 0x%x Row:%d", addr, row);
-        this->bus_->send_pixels(Rect(x_display, y_display + row, width, y_display + row + 1), addr, view_width);
+        this->bus_->send_pixels(Rect(x, y + row, width, y + row + 1), addr, view_width);
         addr += data_width;
 
         App.feed_wdt();
@@ -339,19 +339,19 @@ bool DisplayDriver::send_buffer(int x_display, int y_display, const uint8_t *dat
 }
 
 // note that this bypasses the buffer and writes directly to the display.
-void DisplayDriver::draw_pixels_at(int x_display, int y_display, const uint8_t *data, int x_in_data, int y_in_data,
-                                   int width, int height, ColorBitness bitness, int x_pad) {
+void DisplayDriver::draw_pixels_at(int x, int y, ColorBitness &bitness, const uint8_t *data, int x_in_data, int y_in_data, int width,
+                                   int height, int x_pad) {
   if (width <= 0 || height <= 0)
     return;
   // if color mapping or software rotation is required, hand this off to the parent implementation. This will
   // do color conversion pixel-by-pixel into the buffer and draw it later. If this is happening the user has not
   // configured the renderer well.
   if (this->rotation_ == DISPLAY_ROTATION_0_DEGREES && !this->is_buffered()) {
-    if (this->send_buffer(x_display, y_display, data, x_in_data, y_in_data, width, height, bitness, x_pad)) {
+    if (this->send_buffer(x, y, bitness, data, x_in_data, y_in_data, width, height, x_pad)) {
       return;
     }
   }
-  Display::draw_pixels_at(x_display, y_display, data, x_in_data, y_in_data, width, height, bitness, x_pad);
+  Display::draw_pixels_at(x, y, bitness, data, x_in_data, y_in_data, width, height, x_pad);
 }
 
 void DisplayDriver::set_invert_colors(bool invert) {

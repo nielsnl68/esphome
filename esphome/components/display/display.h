@@ -243,16 +243,6 @@ class Display : public PollingComponent {
   /// Clear the entire screen by filling it with OFF pixels.
   void clear();
 
-  /// Get the calculated width of the display in pixels with rotation applied.
-  virtual int get_width() { return this->get_width_internal(); }
-  /// Get the calculated height of the display in pixels with rotation applied.
-  virtual int get_height() { return this->get_height_internal(); }
-
-  /// Get the native (original) width of the display in pixels.
-  int get_native_width() { return this->get_width_internal(); }
-  /// Get the native (original) height of the display in pixels.
-  int get_native_height() { return this->get_height_internal(); }
-
   /// Set a single pixel at the specified coordinates to default color.
   inline void draw_pixel_at(int x, int y) { this->draw_pixel_at(x, y, COLOR_ON); }
 
@@ -279,8 +269,8 @@ class Display : public PollingComponent {
    * The length of each source buffer line (stride) will be x_in_data + width + x_pad.
    */
 
-  virtual void draw_pixels_at(int x, int y, const uint8_t *data, int x_in_data, int y_in_data, int width, int height,
-                              ColorBitness bitness, int x_pad = 0);
+  virtual void draw_pixels_at(int x, int y, ColorBitness &bitness, const uint8_t *data, int x_in_data, int y_in_data, int width, int height,
+                              int end_pad = 0);
 
   /// Convenience overload for base case where the pixels are packed into the buffer with no gaps (e.g. suits LVGL.)
   // #depricated
@@ -288,15 +278,16 @@ class Display : public PollingComponent {
                       bool big_endian) {
     bitness.color_order = order;
     bitness.little_endian = !big_endian;
-    this->draw_pixels_at(x, y, ptr, 0, 0, width, height, bitness);
+    this->draw_pixels_at(x, y, bitness, ptr, 0, 0, width, height);
   }
   // #depricated
   virtual void draw_pixels_at(int x, int y, int width, int height, const uint8_t *ptr, ColorOrder order,
                               ColorBitness bitness, bool big_endian, int x_offset, int y_offset, int x_pad) {
     bitness.color_order = order;
     bitness.little_endian = !big_endian;
-    this->draw_pixels_at(x, y, ptr, x_offset, y_offset, width, height, bitness, x_pad);
+    this->draw_pixels_at(x, y, bitness, ptr, x_offset, y_offset, width, height, x_pad);
   }
+
   /// Draw a straight line from the point [x1,y1] to [x2,y2] with the given color.
   void line(int x1, int y1, int x2, int y2, Color color = COLOR_ON);
 

@@ -156,8 +156,8 @@ class DisplayDriver : public Display {
   void setup() override;
 
   void draw_pixel_at(int x, int y, Color color) override;
-  void draw_pixels_at(int x, int y, const uint8_t *data, int x_in_data, int y_in_data, int width, int height,
-                      ColorBitness bitness, int end_pad) override;
+  void draw_pixels_at(int x, int y, ColorBitness &bitness, const uint8_t *data, int x_in_data, int y_in_data, int width,
+                      int height, int end_pad = 0) override;
 
   bool is_buffered() { return (this->buffer_ != nullptr); }
   float get_setup_priority() const override { return setup_priority::HARDWARE; };
@@ -168,8 +168,8 @@ class DisplayDriver : public Display {
 
   virtual void buffer_pixel_at(int x, int y, Color color);
   virtual bool set_addr_window(uint16_t x, uint16_t y, uint16_t x2, uint16_t y2) { return false; }
-  virtual bool send_buffer(int x, int y, const uint8_t *data, int x_in_data, int y_in_data, int width, int height,
-                           ColorBitness bitness, int end_pad);
+  virtual bool send_buffer(int x, int y, ColorBitness &bitness, const uint8_t *data, int x_in_data, int y_in_data,
+                           int width, int height, int end_pad);
 
   virtual void setup_pins();
   virtual void setup_lcd();

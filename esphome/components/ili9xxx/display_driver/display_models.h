@@ -23,13 +23,13 @@ class Ili9xxxDriver : public DisplayDriver {
           this->swap_xy_ = (bits & MADCTL_MV) != 0;
           this->mirror_x_ = (bits & MADCTL_MX) != 0;
           this->mirror_y_ = (bits & MADCTL_MY) != 0;
-          this->display_bitness_.color_order = (bits & MADCTL_BGR) ? COLOR_ORDER_BGR : COLOR_ORDER_RGB;
+          this->display_schema_.color_order = (bits & MADCTL_BGR) ? COLOR_ORDER_BGR : COLOR_ORDER_RGB;
           break;
         }
 
         case ILI9XXX_PIXFMT: {
           if ((bits & 0xF) == 6)
-            this->display_bitness_ = ColorBitness::COLOR_BITNESS_666;
+            this->display_schema_ = ColorSchema::COLOR_BITNESS_666;
           break;
         }
 
@@ -41,8 +41,8 @@ class Ili9xxxDriver : public DisplayDriver {
   }
 
   void finalize_init_values() override {
-    uint8_t pix = this->display_bitness_.pixel_mode == ColorBitness::COLOR_BITS_666 ? 0x66 : 0x55;
-    uint8_t mad = this->display_bitness_.color_order == COLOR_ORDER_BGR ? MADCTL_BGR : MADCTL_RGB;
+    uint8_t pix = this->display_schema_.pixel_mode == ColorSchema::COLOR_BITS_666 ? 0x66 : 0x55;
+    uint8_t mad = this->display_schema_.color_order == COLOR_ORDER_BGR ? MADCTL_BGR : MADCTL_RGB;
     if (this->swap_xy_)
       mad |= MADCTL_MV;
     if (this->mirror_x_)
@@ -53,7 +53,7 @@ class Ili9xxxDriver : public DisplayDriver {
     this->bus_->send_command(this->pre_invertcolors_ ? ILI9XXX_INVON : ILI9XXX_INVOFF);
     this->bus_->send_command(ILI9XXX_MADCTL, &mad, 1);
     this->bus_->send_command(ILI9XXX_PIXFMT, &pix, 1);
-    this->display_bitness_.color_order = MADCTL_RGB;
+    this->display_schema_.color_order = MADCTL_RGB;
     delay(50);
     this->bus_->send_command(ILI9XXX_DISPON);
     delay(150);

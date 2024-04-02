@@ -101,24 +101,24 @@ void Display::line_at_angle(int x, int y, int angle, int start_radius, int stop_
   this->line(x1, y1, x2, y2, color);
 }
 
-void Display::draw_pixels_at(int x, int y, ColorBitness &bitness, const uint8_t *data, int x_in_data, int y_in_data, int width, int height,
-                              int end_pad) {
+void Display::draw_pixels_at(int x, int y, ColorSchema &bitness, const uint8_t *data, int x_in_data, int y_in_data,
+                             int width, int height, int end_pad) {
   size_t x_low = x_in_data;
   size_t y_low = y_in_data;
   size_t x_high = x_in_data + width - 1;
   size_t y_high = y_in_data + height - 1;
   size_t data_width = y_high + end_pad - 1;
   uint8_t bytes_per_pixel = bitness.bytes_per_pixel;
-  uint8_t devider = bitness.pixel_devider();
+  uint8_t pixel_devider = bitness.pixel_devider();
   uint32_t color_value;
   uint32_t x_start = x;
   uint32_t x_end = x + width - 1;
   uint32_t y_end = y + height - 1;
 
-  if (devider > 1) {
-    x_low = (x_low - (x_low % devider)) / devider;
-    x_high = (x_high + (devider - (x_high % devider))) / devider;
-    data_width = (data_width + (devider - (data_width % devider))) / devider;
+  if (pixel_devider > 1) {
+    x_low = (x_low - (x_low % pixel_devider)) / pixel_devider;
+    x_high = (x_high + (pixel_devider - (x_high % pixel_devider))) / pixel_devider;
+    data_width = (data_width + (pixel_devider - (data_width % pixel_devider))) / pixel_devider;
   }
 
   data_width *= bytes_per_pixel;

@@ -37,7 +37,7 @@ CONF_COLOR_PALETTE_ENUM = cv.one_of("NONE", "GRAYSCALE", "IMAGE_ADAPTIVE")
 CONF_COLOR_PALETTE_ID = "color_palette_id"
 CONF_COLOR_PALETTE_IMAGES = "color_palette_images"
 CONF_INTERFACE = "interface"
-CONF_18BIT_MODE = "18bit_mode"
+
 
 CONF_BUS_ID = "bus_id"
 CONF_DE_PIN = "de_pin"
@@ -56,6 +56,11 @@ CONF_VSYNC_PULSE_WIDTH = "vsync_pulse_width"
 CONF_VSYNC_FRONT_PORCH = "vsync_front_porch"
 CONF_VSYNC_BACK_PORCH = "vsync_back_porch"
 
+CONF_COLOR_SCHEMA = "color_schema"
+CONF_COLOR_MODE = "color_mode"
+CONF_byte_aligned = "byte_aligned"
+CONF_little_endian = "little_endian"
+
 
 def AUTO_LOAD():
     if CORE.is_esp32:
@@ -69,12 +74,25 @@ SPI16D_Interface = display_ns.class_("SPI16DBus", displayInterface)
 RGB_Interface = display_ns.class_("RGBBus", SPI_Interface)
 
 
-ColorMode = display_ns.enum("ColorMode")
+ColorMode = display_ns.enum("ColorOrder")
+COLOR_MODES = {
+    "1bit": ColorMode.COLOR_MODE_1BIT,
+    "2bit": ColorMode.COLOR_MODE_2BITS,
+    "4bit": ColorMode.COLOR_MODE_4BITS,
+    "8bit": ColorMode.COLOR_MODE_8BITS,
+    "332": ColorMode.COLOR_MODE_332,
+    "565": ColorMode.COLOR_MODE_565,
+    "666": ColorMode.COLOR_MODE_666,
+    "888": ColorMode.COLOR_MODE_888,
+    "4444": ColorMode.COLOR_MODE_4444,
+    "8888": ColorMode.COLOR_MODE_8888,
+}
 
-ColorOrder = display.display_ns.enum("ColorMode")
+ColorOrder = display_ns.enum("ColorOrder")
 COLOR_ORDERS = {
     "RGB": ColorOrder.COLOR_ORDER_RGB,
     "BGR": ColorOrder.COLOR_ORDER_BGR,
+    "GRB": ColorOrder.COLOR_ORDER_GRB,
 }
 
 
@@ -82,6 +100,17 @@ DisplayDriver = display_ns.class_("DisplayDriver", display.Display)
 
 DISPLAY_REGISTRY = Registry()
 DISPLAY_SCHEMA = cv.Schema({})
+
+COLOR_SCHEMA = cv.Schema(
+    {
+        cv.Optional(CONF_COLOR_MODE, default="565"): cv.valid,
+        cv.Optional(CONF_COLOR_ORDER, default="RGB"): cv.one_of(
+            *COLOR_ORDERS.keys(), upper=True
+        ),
+        cv.Optional(CONF_byte_aligned): cv.boolean,
+        cv.Optional(CONF_little_endian): cv.boolean,
+    }
+)
 
 
 def validate_model_registry(base_schema, **kwargs):
@@ -226,10 +255,6 @@ DISPLAY_DRIVER_SCHEMA = cv.All(
                     cv.file_
                 ),
                 cv.Optional(CONF_INVERT_COLORS): cv.boolean,
-                cv.Optional(CONF_18BIT_MODE): cv.boolean,
-                cv.Optional(CONF_COLOR_ORDER): cv.one_of(
-                    *COLOR_ORDERS.keys(), upper=True
-                ),
                 cv.Exclusive(CONF_ROTATION, CONF_ROTATION): validate_rotation,
                 cv.Exclusive(CONF_TRANSFORM, CONF_ROTATION): cv.Schema(
                     {
@@ -362,6 +387,3 @@ async def register_display_driver(config):
 
     if CONF_INVERT_COLORS in config:
         cg.add(var.invert_colors(config[CONF_INVERT_COLORS]))
-
-    if CONF_18BIT_MODE in config:
-        cg.add(var.set_18bit_mode(config[CONF_18BIT_MODE]))

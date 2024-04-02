@@ -1,7 +1,14 @@
 #pragma once
 #include "esphome/components/spi/spi.h"
 #include "esphome/components/display/display.h"
+// only applicable on ESP32-S3
+#ifdef USE_ESP32_VARIANT_ESP32S3
+#include "esp_lcd_panel_ops.h"
 
+#include "esp_lcd_panel_rgb.h"
+#endif
+#ifdef USE_ESP_IDF
+#endif
 namespace esphome {
 namespace display {
 
@@ -72,7 +79,7 @@ class SPI16DBus : public SPIBus {
 };
 
 #ifdef USE_ESP32_VARIANT_ESP32S3
-class RGBBus : public IOBus {
+class RGBBus : public SPIBus {
   void setup(DisplayDriver *driver) override;
   void dump_config() override;
 
@@ -132,16 +139,16 @@ class DisplayDriver : public Display {
   void set_reset_pin(GPIOPin *reset) { this->reset_pin_ = reset; }
   void set_palette(const uint8_t *palette) { this->palette_ = palette; }
 
-  ColorBitness get_color_depth() { return this->display_bitness_; }
+  ColorSchema get_color_depth() { return this->display_schema_; }
   void set_18bit_mode(bool mode) {
     if (mode) {
-      this->display_bitness_.raw = ColorBitness::CB666;
+      this->display_schema_.raw = ColorSchema::CB666;
     }
   }
 
-  bool get_18bit_mode() { return this->display_bitness_.pixel_mode == ColorBitness::COLOR_BITS_666; }
-  void set_color_order(ColorOrder color_order) { this->display_bitness_.color_order = color_order; }
-  ColorOrder get_color_order() { return (ColorOrder) this->display_bitness_.color_order; }
+  bool get_18bit_mode() { return this->display_schema_.pixel_mode == ColorSchema::COLOR_BITS_666; }
+  void set_color_order(ColorOrder color_order) { this->display_schema_.color_order = color_order; }
+  ColorOrder get_color_order() { return (ColorOrder) this->display_schema_.color_order; }
 
   void set_swap_xy(bool swap_xy) { this->swap_xy_ = swap_xy; }
   void set_mirror_x(bool mirror_x) { this->mirror_x_ = mirror_x; }
@@ -156,7 +163,7 @@ class DisplayDriver : public Display {
   void setup() override;
 
   void draw_pixel_at(int x, int y, Color color) override;
-  void draw_pixels_at(int x, int y, ColorBitness &bitness, const uint8_t *data, int x_in_data, int y_in_data, int width,
+  void draw_pixels_at(int x, int y, ColorSchema &bitness, const uint8_t *data, int x_in_data, int y_in_data, int width,
                       int height, int end_pad = 0) override;
 
   bool is_buffered() { return (this->buffer_ != nullptr); }
@@ -168,7 +175,7 @@ class DisplayDriver : public Display {
 
   virtual void buffer_pixel_at(int x, int y, Color color);
   virtual bool set_addr_window(uint16_t x, uint16_t y, uint16_t x2, uint16_t y2) { return false; }
-  virtual bool send_buffer(int x, int y, ColorBitness &bitness, const uint8_t *data, int x_in_data, int y_in_data,
+  virtual bool send_buffer(int x, int y, ColorSchema &bitness, const uint8_t *data, int x_in_data, int y_in_data,
                            int width, int height, int end_pad);
 
   virtual void setup_pins();
@@ -185,8 +192,8 @@ class DisplayDriver : public Display {
   const uint8_t *palette_;
   std::string model_{""};
 
-  ColorBitness buffer_bitness_{};
-  ColorBitness display_bitness_{ColorBitness(ColorBitness::CB565)};
+  ColorSchema buffer_schema_{};
+  ColorSchema display_schema_{ColorSchema(ColorSchema::CB565)};
 
   uint32_t get_buffer_size_();
 

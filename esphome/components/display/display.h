@@ -269,12 +269,12 @@ class Display : public PollingComponent {
    * The length of each source buffer line (stride) will be x_in_data + width + x_pad.
    */
 
-  virtual void draw_pixels_at(int x, int y, ColorBitness &bitness, const uint8_t *data, int x_in_data, int y_in_data, int width, int height,
-                              int end_pad = 0);
+  virtual void draw_pixels_at(int x, int y, ColorSchema &bitness, const uint8_t *data, int x_in_data, int y_in_data,
+                              int width, int height, int end_pad = 0);
 
   /// Convenience overload for base case where the pixels are packed into the buffer with no gaps (e.g. suits LVGL.)
   // #depricated
-  void draw_pixels_at(int x, int y, int width, int height, const uint8_t *ptr, ColorOrder order, ColorBitness bitness,
+  void draw_pixels_at(int x, int y, int width, int height, const uint8_t *ptr, ColorOrder order, ColorSchema bitness,
                       bool big_endian) {
     bitness.color_order = order;
     bitness.little_endian = !big_endian;
@@ -282,7 +282,7 @@ class Display : public PollingComponent {
   }
   // #depricated
   virtual void draw_pixels_at(int x, int y, int width, int height, const uint8_t *ptr, ColorOrder order,
-                              ColorBitness bitness, bool big_endian, int x_offset, int y_offset, int x_pad) {
+                              ColorSchema bitness, bool big_endian, int x_offset, int y_offset, int x_pad) {
     bitness.color_order = order;
     bitness.little_endian = !big_endian;
     this->draw_pixels_at(x, y, bitness, ptr, x_offset, y_offset, width, height, x_pad);

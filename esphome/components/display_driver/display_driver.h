@@ -1,6 +1,9 @@
 #pragma once
 #include "esphome/components/spi/spi.h"
 #include "esphome/components/display/display.h"
+#include "esphome/components/display/display_color_utils.h"
+#include "pixel_colorshema.h"
+
 // only applicable on ESP32-S3
 #ifdef USE_ESP32_VARIANT_ESP32S3
 #include "esp_lcd_panel_ops.h"
@@ -137,23 +140,14 @@ class DisplayDriver : public Display {
 
   void set_interface(IOBus *interface) { this->bus_ = interface; }
   void set_reset_pin(GPIOPin *reset) { this->reset_pin_ = reset; }
-  void set_palette(const uint8_t *palette) { this->palette_ = palette; }
-
-  ColorSchema get_color_depth() { return this->display_schema_; }
-  void set_18bit_mode(bool mode) {
-    if (mode) {
-      this->display_schema_.raw = ColorSchema::CB666;
-    }
-  }
-
-  bool get_18bit_mode() { return this->display_schema_.pixel_mode == ColorSchema::COLOR_BITS_666; }
-  void set_color_order(ColorOrder color_order) { this->display_schema_.color_order = color_order; }
-  ColorOrder get_color_order() { return (ColorOrder) this->display_schema_.color_order; }
 
   void set_swap_xy(bool swap_xy) { this->swap_xy_ = swap_xy; }
   void set_mirror_x(bool mirror_x) { this->mirror_x_ = mirror_x; }
   void set_mirror_y(bool mirror_y) { this->mirror_y_ = mirror_y; }
   void set_model(std::string model) { this->model_ = model; }
+
+  ColorSchema get_display_schema() { return this->display_schema_; }
+  ColorSchema get_buffer_schema() { return this->buffer_schema_; }
 
   void set_invert_colors(bool invert);
 
@@ -189,11 +183,11 @@ class DisplayDriver : public Display {
   IOBus *bus_{nullptr};
   const uint8_t *init_sequence_{};
   Rect view_port_{};
-  const uint8_t *palette_;
+
   std::string model_{""};
 
   ColorSchema buffer_schema_{};
-  ColorSchema display_schema_{ColorSchema(ColorSchema::CB565)};
+  ColorSchema display_schema_{};
 
   uint32_t get_buffer_size_();
 

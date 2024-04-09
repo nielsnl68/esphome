@@ -56,10 +56,11 @@ CONF_VSYNC_PULSE_WIDTH = "vsync_pulse_width"
 CONF_VSYNC_FRONT_PORCH = "vsync_front_porch"
 CONF_VSYNC_BACK_PORCH = "vsync_back_porch"
 
-CONF_COLOR_SCHEMA = "color_schema"
+CONF_DISPLAY_COLORFORMAT = "disply_colorformat"
+CONF_BUFFER_COLORFORMAT = "buffer_colorformat"
 CONF_COLOR_MODE = "color_mode"
-CONF_byte_aligned = "byte_aligned"
-CONF_little_endian = "little_endian"
+CONF_BYTE_ALIGNED = "byte_aligned"
+CONF_LITTLE_ENDIAN = "little_endian"
 
 
 def AUTO_LOAD():
@@ -74,18 +75,18 @@ SPI16D_Interface = display_ns.class_("SPI16DBus", displayInterface)
 RGB_Interface = display_ns.class_("RGBBus", SPI_Interface)
 
 
-ColorMode = display_ns.enum("ColorOrder")
+ColorBitness = display_ns.enum("ColorBitness")
 COLOR_MODES = {
-    "1bit": ColorMode.COLOR_MODE_1BIT,
-    "2bit": ColorMode.COLOR_MODE_2BITS,
-    "4bit": ColorMode.COLOR_MODE_4BITS,
-    "8bit": ColorMode.COLOR_MODE_8BITS,
-    "332": ColorMode.COLOR_MODE_332,
-    "565": ColorMode.COLOR_MODE_565,
-    "666": ColorMode.COLOR_MODE_666,
-    "888": ColorMode.COLOR_MODE_888,
-    "4444": ColorMode.COLOR_MODE_4444,
-    "8888": ColorMode.COLOR_MODE_8888,
+    "1bit": ColorBitness.COLOR_MODE_1BIT,
+    "2bit": ColorBitness.COLOR_MODE_2BITS,
+    "4bit": ColorBitness.COLOR_MODE_4BITS,
+    "8bit": ColorBitness.COLOR_MODE_8BITS,
+    "332": ColorBitness.COLOR_MODE_332,
+    "565": ColorBitness.COLOR_MODE_565,
+    "666": ColorBitness.COLOR_MODE_666,
+    "888": ColorBitness.COLOR_MODE_888,
+    "4444": ColorBitness.COLOR_MODE_4444,
+    "8888": ColorBitness.COLOR_MODE_8888,
 }
 
 ColorOrder = display_ns.enum("ColorOrder")
@@ -100,17 +101,6 @@ DisplayDriver = display_ns.class_("DisplayDriver", display.Display)
 
 DISPLAY_REGISTRY = Registry()
 DISPLAY_SCHEMA = cv.Schema({})
-
-COLOR_SCHEMA = cv.Schema(
-    {
-        cv.Optional(CONF_COLOR_MODE, default="565"): cv.valid,
-        cv.Optional(CONF_COLOR_ORDER, default="RGB"): cv.one_of(
-            *COLOR_ORDERS.keys(), upper=True
-        ),
-        cv.Optional(CONF_byte_aligned): cv.boolean,
-        cv.Optional(CONF_little_endian): cv.boolean,
-    }
-)
 
 
 def validate_model_registry(base_schema, **kwargs):
@@ -238,6 +228,20 @@ INTERFACE_SCHEMA = cv.typed_schema(
     upper=True,
 )
 
+COLORFORMAT_SCHEMA = cv.Schema(
+    {
+        cv.Optional(CONF_COLOR_MODE, default="565"): cv.valid,
+        cv.Optional(CONF_COLOR_ORDER, default="RGB"): cv.one_of(
+            *COLOR_ORDERS.keys(), upper=True
+        ),
+        cv.Optional(CONF_BYTE_ALIGNED): cv.boolean,
+        cv.Optional(CONF_LITTLE_ENDIAN): cv.boolean,
+        cv.GenerateID(CONF_COLOR_PALETTE_ID): cv.declare_id(cg.uint8),
+        cv.Optional(CONF_COLOR_PALETTE_IMAGES): cv.ensure_list(cv.file_),
+        cv.Optional(CONF_COLOR_PALETTE): cv.ensure_list(cv.color),
+    }
+)
+
 
 DISPLAY_DRIVER_SCHEMA = cv.All(
     font.validate_pillow_installed,
@@ -247,13 +251,6 @@ DISPLAY_DRIVER_SCHEMA = cv.All(
                 cv.GenerateID(): cv.declare_id(DisplayDriver),
                 cv.Required(CONF_INTERFACE): INTERFACE_SCHEMA,
                 cv.Optional(CONF_RESET_PIN): pins.gpio_output_pin_schema,
-                cv.Optional(
-                    CONF_COLOR_PALETTE, default="NONE"
-                ): CONF_COLOR_PALETTE_ENUM,
-                cv.GenerateID(CONF_COLOR_PALETTE_ID): cv.declare_id(cg.uint8),
-                cv.Optional(CONF_COLOR_PALETTE_IMAGES, default=[]): cv.ensure_list(
-                    cv.file_
-                ),
                 cv.Optional(CONF_INVERT_COLORS): cv.boolean,
                 cv.Exclusive(CONF_ROTATION, CONF_ROTATION): validate_rotation,
                 cv.Exclusive(CONF_TRANSFORM, CONF_ROTATION): cv.Schema(
@@ -314,6 +311,10 @@ async def register_display_iobus(config, var):
 
         pin = await cg.gpio_pin_expression(config[CONF_DE_PIN])
         cg.add(bus.set_de_pin(pin))
+
+
+# async def register_colorschema(config, schema, var)
+#    None
 
 
 async def register_display_driver(config):

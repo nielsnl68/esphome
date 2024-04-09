@@ -72,9 +72,9 @@ void DisplayDriver::setup_lcd() {
 // values per bit is huge
 size_t DisplayDriver::get_buffer_size_() {
   size_t d_width = this->width_;
-  uint8_t pixel_devider = this->buffer_schema_.pixel_devider();
+  uint8_t pixels_per_byte = this->buffer_schema_.pixels_per_byte();
 
-  d_width = ((d_width + (pixel_devider - (d_width % pixel_devider))) / pixel_devider);
+  d_width = ((d_width + (pixels_per_byte - (d_width % pixels_per_byte))) / pixels_per_byte);
 
   size_t size = d_width * this->height_ * this->buffer_schema_.bytes_per_pixel;
   return size;
@@ -235,7 +235,7 @@ bool DisplayDriver::send_buffer(int x, int y, ColorSchema &bitness, const uint8_
                                 int width, int height, int x_pad) {
   size_t data_width = width + x_pad + x_in_data;
   uint8_t bytes_per_pixel = bitness.bytes_per_pixel;
-  uint8_t pixel_devider = bitness.pixel_devider();
+  uint8_t pixels_per_byte = bitness.pixels_per_byte();
   ESP_LOGD(TAG, "Start display(display:[%d, %d], in_data:[%d + %d, %d], dimension:[%d, %d] %d", x, y, x_in_data, x_pad,
            y_in_data, width, height, data_width);
   auto now = millis();
@@ -253,10 +253,10 @@ bool DisplayDriver::send_buffer(int x, int y, ColorSchema &bitness, const uint8_
   }
   this->bus_->begin_pixels();
 
-  if (pixel_devider > 1) {
-    x_in_data = (x_in_data - (x_in_data % pixel_devider)) / pixel_devider;
-    width = (width + (pixel_devider - (width % pixel_devider))) / pixel_devider;
-    data_width = (data_width + (pixel_devider - (data_width % pixel_devider))) / pixel_devider;
+  if (pixels_per_byte > 1) {
+    x_in_data = (x_in_data - (x_in_data % pixels_per_byte)) / pixels_per_byte;
+    width = (width + (pixels_per_byte - (width % pixels_per_byte))) / pixels_per_byte;
+    data_width = (data_width + (pixels_per_byte - (data_width % pixels_per_byte))) / pixels_per_byte;
   }
   data_width *= bytes_per_pixel;
   size_t start_pos = (y_in_data * data_width) + x_in_data;
@@ -298,10 +298,10 @@ bool DisplayDriver::send_buffer(int x, int y, ColorSchema &bitness, const uint8_
     while (true) {
       memcpy((void *) &buf_color, (const void *) addr, bytes_per_pixel);
       //  ESP_LOGD(TAG, "display (col:%d, row:%d,  start_pos:%d, bytes_send:%d ", col, row, start_pos, bytes_send);
-      for (auto buf_part = 0; buf_part < pixel_devider; buf_part++) {
+      for (auto buf_part = 0; buf_part < pixels_per_byte; buf_part++) {
         Color color = ColorUtil::to_color(buf_color, bitness, this->palette_, buf_part);
         disp_color = ColorUtil::from_color(color, this->display_schema_, this->palette_, disp_color, disp_part);
-        if (++disp_part == this->display_schema_.pixel_devider()) {
+        if (++disp_part == this->display_schema_.pixels_per_byte()) {
           memcpy((void *) (this->batch_buffer_ + bytes_send), (const void *) &disp_color, display_bytes_per_pixel);
           disp_part = 0;
           disp_color = 0;
@@ -395,13 +395,13 @@ void HOT DisplayDriver::buffer_pixel_at(int x, int y, Color color) {
   uint32_t old_color, new_color;
 
   uint8_t bytes_per_pixel = this->buffer_schema_.bytes_per_pixel;
-  uint8_t pixel_devider = this->buffer_schema_.pixel_devider();
+  uint8_t pixels_per_byte = this->buffer_schema_.pixels_per_byte();
   const uint8_t *addr = this->buffer_;
   size_t width = this->width_, x_buf = x;
 
-  if (pixel_devider > 1) {
-    x_buf = (x - (x % pixel_devider)) / pixel_devider;
-    width = (this->width_ + (pixel_devider - (this->width_ % pixel_devider))) / pixel_devider;
+  if (pixels_per_byte > 1) {
+    x_buf = (x - (x % pixels_per_byte)) / pixels_per_byte;
+    width = (this->width_ + (pixels_per_byte - (this->width_ % pixels_per_byte))) / pixels_per_byte;
   }
 
   addr += ((y * width) + x_buf) * bytes_per_pixel;

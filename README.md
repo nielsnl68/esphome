@@ -8,3 +8,4 @@ For issues, please go to [the issue tracker](https://github.com/esphome/issues/i
 
 For feature requests, please see [feature requests](https://github.com/esphome/feature-requests/issues).
 
+Lang zal die leven

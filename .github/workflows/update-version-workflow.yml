@@ -19,7 +19,7 @@ jobs:
 
       - name: Update version.txt
         run: |
-          sed -ri 's/(.*FileVersion = )([0-9]+)(.*)/echo "\1$((\2+1))\3"/ge' version.txt
+          sed -ri 's/(.*MergeNumber  = )([0-9]+)(.*)/echo "\1$((\2+1))\3"/ge' .merge-ref
       - name: Amend the last commit
         run: |
           git config --global user.email "gitbot@openrct2.org"

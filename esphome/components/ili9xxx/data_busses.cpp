@@ -1,4 +1,4 @@
-#include "interfaces.h"
+#include "data_bases.h"
 #include "esphome/core/application.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/helpers.h"
@@ -136,7 +136,7 @@ void DPIConfig::dpi_setup(uint16_t width, uint16_t height) {
   }
   ESP_ERROR_CHECK(esp_lcd_panel_reset(this->handle_));
   ESP_ERROR_CHECK(esp_lcd_panel_init(this->handle_));
-  esph_log_config(TAG, "RPI_DPI_RGB setup complete");
+  esph_log_config(TAG, "RPI_DPI interface setup complete");
 }
 
 void DPIConfig::dpi_dump_config() {

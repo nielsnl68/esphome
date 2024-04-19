@@ -98,7 +98,7 @@ COLOR_PALETTE = cv.one_of("NONE", "GRAYSCALE", "IMAGE_ADAPTIVE")
 CONF_COLOR_PALETTE_IMAGES = "color_palette_images"
 CONF_COLOR_PALETTE_ID = "color_palette_id"
 
-CONF_INTERFACE = "interface"
+CONF_BUS_TYPE = "bus_type"
 CONF_BUS_ID = "bus_id"
 
 CONF_DPI_INTERFACE = "dpi_interface"
@@ -143,7 +143,7 @@ def _validate(config):
         "ST7789V",
     ]:
         raise cv.Invalid(
-            "Provided model can't run on ESP8266. Use an ESP32 with PSRAM onboard"
+            "Selected model can't run on ESP8266. Use an ESP32 with PSRAM onboard"
         )
     return config
 
@@ -285,7 +285,7 @@ CONFIG_SCHEMA = cv.All(
             ),
         },
         default_type="SPI",
-        key=CONF_INTERFACE,
+        key=CONF_BUS_TYPE,
         upper=True,
     ),
     cv.has_at_most_one_key(CONF_PAGES, CONF_LAMBDA),
@@ -342,22 +342,22 @@ async def register_display_iobus(var, config):
     bus = cg.new_Pvariable(config[CONF_BUS_ID])
     cg.add(var.set_interface(bus))
 
-    if config[CONF_INTERFACE] == "SPI":
+    if config[CONF_BUS_TYPE] == "SPI":
         await spi.register_spi_device(bus, config)
         dc = await cg.gpio_pin_expression(config[CONF_DC_PIN])
         cg.add(bus.set_dc_pin(dc))
 
-    elif config[CONF_INTERFACE] == "SPI16D":
+    elif config[CONF_BUS_TYPE] == "SPI16D":
         await spi.register_spi_device(bus, config)
         dc = await cg.gpio_pin_expression(config[CONF_DC_PIN])
         cg.add(bus.set_dc_pin(dc))
 
-    elif config[CONF_INTERFACE] == "DPI_RGB":
+    elif config[CONF_BUS_TYPE] == "DPI_RGB":
         await register_dpi_interface(
             bus, config[CONF_DPI_INTERFACE], config[CONF_COLOR_ORDER]
         )
 
-    elif config[CONF_INTERFACE] == "SPI_RGB":
+    elif config[CONF_BUS_TYPE] == "SPI_RGB":
         await register_dpi_interface(
             bus, config[CONF_DPI_INTERFACE], config[CONF_COLOR_ORDER]
         )

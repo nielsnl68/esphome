@@ -232,7 +232,7 @@ void ILI9XXXDisplay::display_() {
     this->set_addr_window_(0, this->y_low_, this->width_ - 1, this->y_high_);
     this->bus_->begin_pixels();
     uint8_t *addr = this->buffer_ + this->y_low_ * this->width_ * 2;
-    this->bus_->send_pixels(display::Rect(0, this->y_low_, this->width_ - 1, this->y_high_), addr,
+    this->bus_->send_pixels(display::Rect(0, this->y_low_, this->width_ - 1, this->y_high_ - this->y_low_ + 1), addr,
                             h * this->width_ * 2);
     this->bus_->end_pixels();
   } else {
@@ -386,7 +386,7 @@ void ILI9XXXDisplay::set_addr_window_(uint16_t x1, uint16_t y1, uint16_t x2, uin
 void ILI9XXXDisplay::invert_colors(bool invert) {
   this->pre_invertcolors_ = invert;
   if (is_ready()) {
-     esph_log_d(TAG, "set INVERT: %X", invert);
+    esph_log_d(TAG, "set INVERT: %X", invert);
     this->bus_->send_command(invert ? ILI9XXX_INVON : ILI9XXX_INVOFF);
   }
 }

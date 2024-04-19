@@ -1,14 +1,11 @@
 #pragma once
 #include "esphome/components/spi/spi.h"
-#include "esphome/components/display/display_buffer.h"
 #include "esphome/components/display/rect.h"
-#include "ili9xxx_defines.h"
-#include "ili9xxx_init.h"
 
-// #ifdef USE_ESP32_VARIANT_ESP32S3
 #include "esp_lcd_panel_ops.h"
+#ifdef USE_ESP32_VARIANT_ESP32S3
 #include "esp_lcd_panel_rgb.h"
-/// #endif
+#endif
 
 namespace esphome {
 namespace ili9xxx {

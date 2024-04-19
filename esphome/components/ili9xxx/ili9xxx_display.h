@@ -3,8 +3,7 @@
 #include "esphome/components/display/display_buffer.h"
 #include "esphome/components/display/display_color_utils.h"
 #include "ili9xxx_defines.h"
-#include "ili9xxx_init.h"
-#include "interfaces.h"
+#include "data_busses.h"
 
 namespace esphome {
 namespace ili9xxx {
@@ -139,105 +138,6 @@ class ILI9XXXDisplay : public display::DisplayBuffer,
   bool mirror_y_{};
 };
 
-//-----------   M5Stack display --------------
-class ILI9XXXM5Stack : public ILI9XXXDisplay {
- public:
-  ILI9XXXM5Stack() : ILI9XXXDisplay(INITCMD_M5STACK, 320, 240, true) {}
-};
-
-//-----------   M5Stack display --------------
-class ILI9XXXM5CORE : public ILI9XXXDisplay {
- public:
-  ILI9XXXM5CORE() : ILI9XXXDisplay(INITCMD_M5CORE, 320, 240, true) {}
-};
-
-//-----------   ST7789V display --------------
-class ILI9XXXST7789V : public ILI9XXXDisplay {
- public:
-  ILI9XXXST7789V() : ILI9XXXDisplay(INITCMD_ST7789V, 240, 320, false) {}
-};
-
-//-----------   ILI9XXX_24_TFT display --------------
-class ILI9XXXILI9341 : public ILI9XXXDisplay {
- public:
-  ILI9XXXILI9341() : ILI9XXXDisplay(INITCMD_ILI9341, 240, 320, false) {}
-};
-
-//-----------   ILI9XXX_24_TFT rotated display --------------
-class ILI9XXXILI9342 : public ILI9XXXDisplay {
- public:
-  ILI9XXXILI9342() : ILI9XXXDisplay(INITCMD_ILI9341, 320, 240, false) {}
-};
-
-//-----------   ILI9XXX_??_TFT rotated display --------------
-class ILI9XXXILI9481 : public ILI9XXXDisplay {
- public:
-  ILI9XXXILI9481() : ILI9XXXDisplay(INITCMD_ILI9481, 480, 320, false) {}
-};
-
-//-----------   ILI9481 in 18 bit mode --------------
-class ILI9XXXILI948118 : public ILI9XXXDisplay {
- public:
-  ILI9XXXILI948118() : ILI9XXXDisplay(INITCMD_ILI9481_18, 320, 480, true) {}
-};
-
-//-----------   ILI9XXX_35_TFT rotated display --------------
-class ILI9XXXILI9486 : public ILI9XXXDisplay {
- public:
-  ILI9XXXILI9486() : ILI9XXXDisplay(INITCMD_ILI9486, 480, 320, false) {}
-};
-
-class ILI9XXXILI9488 : public ILI9XXXDisplay {
- public:
-  ILI9XXXILI9488(const uint8_t *seq = INITCMD_ILI9488) : ILI9XXXDisplay(seq, 480, 320, true) {}
-
- protected:
-  void set_madctl() override;
-};
-
-//-----------   Waveshare 3.5 Res Touch - ILI9488 interfaced via 16 bit shift register to parallel */
-class WAVESHARERES35 : public ILI9XXXILI9488 {
- public:
-  WAVESHARERES35() : ILI9XXXILI9488(INITCMD_WAVESHARE_RES_3_5) {}
-};
-
-//-----------   ILI9XXX_35_TFT origin colors rotated display --------------
-class ILI9XXXILI9488A : public ILI9XXXDisplay {
- public:
-  ILI9XXXILI9488A() : ILI9XXXDisplay(INITCMD_ILI9488_A, 480, 320, true) {}
-};
-
-//-----------   ILI9XXX_35_TFT rotated display --------------
-class ILI9XXXST7796 : public ILI9XXXDisplay {
- public:
-  ILI9XXXST7796() : ILI9XXXDisplay(INITCMD_ST7796, 320, 480, false) {}
-};
-
-class ILI9XXXS3Box : public ILI9XXXDisplay {
- public:
-  ILI9XXXS3Box() : ILI9XXXDisplay(INITCMD_S3BOX, 320, 240, false) {}
-};
-
-class ILI9XXXS3BoxLite : public ILI9XXXDisplay {
- public:
-  ILI9XXXS3BoxLite() : ILI9XXXDisplay(INITCMD_S3BOXLITE, 320, 240, true) {}
-};
-
-class ILI9XXXGC9A01A : public ILI9XXXDisplay {
- public:
-  ILI9XXXGC9A01A() : ILI9XXXDisplay(INITCMD_GC9A01A, 240, 240, true) {}
-};
-
-class ILI9XXXST7701S : public ILI9XXXDisplay {
- public:
-  ILI9XXXST7701S() : ILI9XXXDisplay(INITCMD_ST7701S, 480, 480, true) {}
-  void set_madctl() override;
-};
-
-class ILI9XXXRPI_DPI_RGB : public ILI9XXXDisplay {
- public:
-    ILI9XXXRPI_DPI_RGB() : ILI9XXXDisplay(INITCMD_RPI_DPI_RGB, 800, 480, true) {}
-};
 
 }  // namespace ili9xxx
 }  // namespace esphome

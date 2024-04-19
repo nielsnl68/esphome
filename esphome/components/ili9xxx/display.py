@@ -6,8 +6,7 @@ from esphome import (
 )
 from esphome.components import (
     display,
-    spi,
-    i80,
+    byte_bus,
 )
 from esphome.components.display import validate_rotation
 from esphome.core import (
@@ -16,7 +15,6 @@ from esphome.core import (
 )
 from esphome.const import (
     CONF_COLOR_PALETTE,
-    CONF_DC_PIN,
     CONF_ID,
     CONF_LAMBDA,
     CONF_MODEL,
@@ -54,23 +52,26 @@ ILI9XXXColorMode = ili9xxx_ns.enum("ILI9XXXColorMode")
 ColorOrder = display.display_ns.enum("ColorMode")
 
 MODELS = {
-    "GC9A01A": ili9xxx_ns.class_("ILI9XXXGC9A01A", ILI9XXXDisplay),
-    "M5STACK": ili9xxx_ns.class_("ILI9XXXM5Stack", ILI9XXXDisplay),
-    "M5CORE": ili9xxx_ns.class_("ILI9XXXM5CORE", ILI9XXXDisplay),
-    "TFT_2.4": ili9xxx_ns.class_("ILI9XXXILI9341", ILI9XXXDisplay),
-    "TFT_2.4R": ili9xxx_ns.class_("ILI9XXXILI9342", ILI9XXXDisplay),
-    "ILI9341": ili9xxx_ns.class_("ILI9XXXILI9341", ILI9XXXDisplay),
-    "ILI9342": ili9xxx_ns.class_("ILI9XXXILI9342", ILI9XXXDisplay),
-    "ILI9481": ili9xxx_ns.class_("ILI9XXXILI9481", ILI9XXXDisplay),
-    "ILI9481-18": ili9xxx_ns.class_("ILI9XXXILI948118", ILI9XXXDisplay),
-    "ILI9486": ili9xxx_ns.class_("ILI9XXXILI9486", ILI9XXXDisplay),
-    "ILI9488": ili9xxx_ns.class_("ILI9XXXILI9488", ILI9XXXDisplay),
-    "ILI9488_A": ili9xxx_ns.class_("ILI9XXXILI9488A", ILI9XXXDisplay),
-    "ST7796": ili9xxx_ns.class_("ILI9XXXST7796", ILI9XXXDisplay),
-    "ST7789V": ili9xxx_ns.class_("ILI9XXXST7789V", ILI9XXXDisplay),
-    "S3BOX": ili9xxx_ns.class_("ILI9XXXS3Box", ILI9XXXDisplay),
-    "S3BOX_LITE": ili9xxx_ns.class_("ILI9XXXS3BoxLite", ILI9XXXDisplay),
-    "WAVESHARE_RES_3_5": ili9xxx_ns.class_("WAVESHARERES35", ILI9XXXDisplay),
+    "GC9A01A": [ili9xxx_ns.class_("ILI9XXXGC9A01A", ILI9XXXDisplay), ["SPI"]],
+    "M5STACK": [ili9xxx_ns.class_("ILI9XXXM5Stack", ILI9XXXDisplay), ["SPI"]],
+    "M5CORE": [ili9xxx_ns.class_("ILI9XXXM5CORE", ILI9XXXDisplay), ["SPI"]],
+    "TFT_2.4": [ili9xxx_ns.class_("ILI9XXXILI9341", ILI9XXXDisplay), ["SPI"]],
+    "TFT_2.4R": [ili9xxx_ns.class_("ILI9XXXILI9342", ILI9XXXDisplay), ["SPI"]],
+    "ILI9341": [ili9xxx_ns.class_("ILI9XXXILI9341", ILI9XXXDisplay), ["SPI"]],
+    "ILI9342": [ili9xxx_ns.class_("ILI9XXXILI9342", ILI9XXXDisplay), ["SPI"]],
+    "ILI9481": [ili9xxx_ns.class_("ILI9XXXILI9481", ILI9XXXDisplay), ["SPI"]],
+    "ILI9481-18": [ili9xxx_ns.class_("ILI9XXXILI948118", ILI9XXXDisplay), ["SPI"]],
+    "ILI9486": [ili9xxx_ns.class_("ILI9XXXILI9486", ILI9XXXDisplay), ["SPI"]],
+    "ILI9488": [ili9xxx_ns.class_("ILI9XXXILI9488", ILI9XXXDisplay), ["SPI"]],
+    "ILI9488_A": [ili9xxx_ns.class_("ILI9XXXILI9488A", ILI9XXXDisplay), ["SPI"]],
+    "ST7796": [ili9xxx_ns.class_("ILI9XXXST7796", ILI9XXXDisplay), ["SPI"]],
+    "ST7789V": [ili9xxx_ns.class_("ILI9XXXST7789V", ILI9XXXDisplay), ["SPI"]],
+    "S3BOX": [ili9xxx_ns.class_("ILI9XXXS3Box", ILI9XXXDisplay), ["SPI"]],
+    "S3BOX_LITE": [ili9xxx_ns.class_("ILI9XXXS3BoxLite", ILI9XXXDisplay), ["SPI"]],
+    "WAVESHARE_RES_3_5": [
+        ili9xxx_ns.class_("WAVESHARERES35", ILI9XXXDisplay),
+        ["SPI16D"],
+    ],
 }
 
 COLOR_ORDERS = {
@@ -151,52 +152,25 @@ BASE_SCHEMA = display.FULL_DISPLAY_SCHEMA.extend(
     }
 ).extend(cv.polling_component_schema("1s"))
 
-TYPE_SPI = "spi"
-TYPE_I80 = "i80"
+TYPE_SPI = "SPI"
+# TYPE_I80 = "i80"
 
 CONFIG_SCHEMA = cv.All(
-    cv.typed_schema(
-        {
-            TYPE_SPI: BASE_SCHEMA.extend(
-                spi.spi_device_schema(False, "40MHz", "mode0")
-            ).extend(
-                {
-                    cv.Required(CONF_DC_PIN): pins.gpio_output_pin_schema,
-                    cv.GenerateID(CONF_BYTE_BUS_ID): cv.declare_id(spi.SPIByteBus),
-                }
-            ),
-            TYPE_I80: BASE_SCHEMA.extend(i80.i80_client_schema()).extend(
-                {
-                    cv.Optional(CONF_DC_PIN): cv.invalid(
-                        "DC pin should be specified in the i80 component only"
-                    )
-                }
-            ),
-        },
-        default_type=TYPE_SPI,
-        key=CONF_BUS_TYPE,
-    ),
+    byte_bus.validate_databus_registry(BASE_SCHEMA, default=TYPE_SPI),
     cv.has_at_most_one_key(CONF_PAGES, CONF_LAMBDA),
     _validate,
 )
 
 
 async def to_code(config):
-    rhs = MODELS[config[CONF_MODEL]].new()
+    rhs = MODELS[config[CONF_MODEL]][0].new()
     var = cg.Pvariable(config[CONF_ID], rhs)
 
     data_rate = int(max(config[CONF_DATA_RATE] / 1e6, 1))
     await display.register_display(var, config)
-    if config[CONF_BUS_TYPE] == TYPE_I80:
-        bus_client = await i80.create_i80_client(config)
-        data_rate = data_rate * 8
-    else:
-        spi_client = await spi.create_spi_client(config)
-        bus_client = cg.new_Pvariable(config[CONF_BYTE_BUS_ID], spi_client)
+    bus_client = byte_bus.register_databus(config)
     cg.add(var.set_bus(bus_client))
     cg.add(var.set_data_rate(data_rate))
-    if dc := config.get(CONF_DC_PIN):
-        cg.add(bus_client.set_dc_pin(await cg.gpio_pin_expression(dc)))
     if CONF_COLOR_ORDER in config:
         cg.add(var.set_color_order(COLOR_ORDERS[config[CONF_COLOR_ORDER]]))
     if CONF_TRANSFORM in config:

@@ -51,10 +51,36 @@ class ByteBus {
    */
   virtual void write_cmd_data(int cmd, const uint8_t *data, size_t length) = 0;
 
+  inline void write_command(int cmd) {
+    write_cmd_data(cmd, nullptr, 0);
+  }
+  inline void write_command(int cmd, const uint8_t data) {
+    write_cmd_data(cmd, &data, 1);
+  }
+  inline void write_command16(int cmd, const uint16_t data) {
+    write_cmd_data(cmd, &data, 2);
+  }
+  inline void write_command(int cmd, const uint8_t *data, size_t length) {
+    write_cmd_data(cmd, data, length);
+  }
+
   virtual void dump_config(){};
 
-  virtual void begin_transaction() = 0;
-  virtual void end_transaction() = 0;
+  void begin_transaction() {
+    if (++this->transaction_counter == 0) {
+      do_begin_transaction();
+    }
+  }
+  void end_transaction(){
+    if (this->transaction_counter == 0) {
+      ESP_LOGE("Transaction is already Ended")
+    } else if (this->transaction_counter == 1) {
+      do_end_transaction();
+      this->transaction_counter = 0;
+    } else {
+      this->transaction_counter--;
+    }
+  }
 
   void set_dc_pin(GPIOPin *dc_pin) { this->dc_pin_ = dc_pin; }
 
@@ -65,7 +91,11 @@ class ByteBus {
   void set_dc_data(bool data) { this->dc_pin_->digital_write(data); }
 
  protected:
+  virtual void do_begin_transaction() = 0;
+  virtual void do_end_transaction() = 0;
+
   GPIOPin *dc_pin_{byte_bus::NULL_PIN};
+  int transaction_counter{0};
 };
 }  // namespace byte_bus
 }  // namespace esphome

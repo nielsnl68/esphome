@@ -82,8 +82,6 @@ class I80Client : public byte_bus::ByteBus {
   }
 
   void write_array(const uint8_t *data, size_t length) override { this->delegate_->write_array(data, length); }
-  void end_transaction() override { this->delegate_->end_transaction(); }
-  void begin_transaction() override { this->delegate_->begin_transaction(); }
 
   void set_parent(I80Component *parent) { this->parent_ = parent; }
 
@@ -92,6 +90,9 @@ class I80Client : public byte_bus::ByteBus {
   void set_data_rate(int data_rate) { this->data_rate_ = data_rate; }
 
  protected:
+  void do_end_transaction() override { this->delegate_->end_transaction(); }
+  void do_begin_transaction() override { this->delegate_->begin_transaction(); }
+
   I80Delegate *delegate_{NULL_DELEGATE};
   I80Component *parent_{};
   GPIOPin *cs_{byte_bus::NULL_PIN};

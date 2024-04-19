@@ -21,6 +21,7 @@ from esphome.const import (
     CONF_MOSI_PIN,
     CONF_SPI_ID,
     CONF_CS_PIN,
+    CONF_DC_PIN,
     CONF_NUMBER,
     CONF_INVERTED,
     KEY_CORE,
@@ -360,6 +361,7 @@ def spi_device_schema(
     default_data_rate=cv.UNDEFINED,
     default_mode=cv.UNDEFINED,
     quad=False,
+    is_databus_schema=False,
 ):
     """Create a schema for an SPI device.
     :param cs_pin_required: If true, make the CS_PIN required in the config.
@@ -369,16 +371,19 @@ def spi_device_schema(
     :return: The SPI device schema, `extend` this in your config schema.
     """
     schema = {
-        cv.GenerateID(CONF_SPI_ID): cv.use_id(
-            QuadSPIComponent if quad else SPIComponent
-        ),
         cv.Optional(CONF_DATA_RATE, default=default_data_rate): SPI_DATA_RATE_SCHEMA,
         cv.Optional(CONF_BIT_ORDER, default="msb_first"): cv.enum(ORDERS, lower=True),
         cv.Optional(CONF_SPI_MODE, default=default_mode): cv.enum(
             SPI_MODE_OPTIONS, upper=True
         ),
-        cv.GenerateID(CONF_CLIENT_ID): cv.declare_id(SPIClient),
     }
+    if not is_databus_schema:
+        schema[cv.GenerateID(CONF_SPI_ID)] = (
+            cv.use_id(QuadSPIComponent if quad else SPIComponent),
+        )
+        schema[cv.GenerateID(CONF_CLIENT_ID)] = cv.declare_id(SPIClient)
+    else:
+        schema[cv.Required(CONF_DC_PIN)] = pins.gpio_output_pin_schema
     if cs_pin_required:
         schema[cv.Required(CONF_CS_PIN)] = pins.gpio_output_pin_schema
     else:
@@ -433,3 +438,40 @@ def final_validate_device_schema(name: str, *, require_mosi: bool, require_miso:
         {cv.Required(CONF_SPI_ID): fv.id_declaration_match_schema(hub_schema)},
         extra=cv.ALLOW_EXTRA,
     )
+
+
+@byte_bus.include_databus(
+    "SPI",
+    SPIByteBus,
+    SPIComponent,
+    spi_device_schema(False, "40MHz", "mode0", False, True),
+)
+@byte_bus.include_databus(
+    "SPI16D",
+    SPIByteBus,
+    SPIComponent,
+    spi_device_schema(False, "40MHz", "mode0", False, True),
+)
+@byte_bus.include_databus(
+    "QSPI",
+    SPIByteBus,
+    SPIComponent,
+    spi_device_schema(False, "40MHz", "mode0", True, True),
+)
+async def create_i80_client(config, var, databus_type):
+    if pin := config.get(CONF_CS_PIN):
+        cg.add(var.set_cs_pin(await cg.gpio_pin_expression(pin)))
+    cg.add(var.set_data_rate(config[CONF_DATA_RATE]))
+    if databus_type == "SPI16D":
+        cg.add(var.set_16bit_data(True))
+    rhs = SPIClient.new(
+        config[CONF_BIT_ORDER], config[CONF_SPI_MODE], config[CONF_DATA_RATE]
+    )
+    client = cg.Pvariable(config[CONF_CLIENT_ID] + "_client", rhs)
+
+    cg.add(client.set_parent(await cg.get_variable(config[byte_bus.CONF_BUS_ID])))
+    if cs_pin := config.get(CONF_CS_PIN):
+        cg.add(client.set_cs_pin(await cg.gpio_pin_expression(cs_pin)))
+    cg.add(var.set_spi_client(client))
+
+    return var

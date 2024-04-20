@@ -157,7 +157,6 @@ TYPE_SPI = "SPI"
 
 CONFIG_SCHEMA = cv.All(
     byte_bus.validate_databus_registry(BASE_SCHEMA, default=TYPE_SPI),
-
     cv.has_at_most_one_key(CONF_PAGES, CONF_LAMBDA),
     _validate,
 )

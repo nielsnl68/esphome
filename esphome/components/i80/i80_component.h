@@ -15,7 +15,6 @@ namespace i80 {
 
 static constexpr const char *TAG = "i80";
 
-
 class I80ByteBus;
 
 class I80Delegate {
@@ -50,9 +49,8 @@ class I80ByteBus;
 
 class I80Component : public Component {
  public:
-  I80Component(InternalGPIOPin *wr_pin, InternalGPIOPin *dc_pin,
-               std::vector<uint8_t> data_pins)
-      : wr_pin_(wr_pin),dc_pin_(dc_pin), data_pins_(std::move(data_pins)) {}
+  I80Component(InternalGPIOPin *wr_pin, InternalGPIOPin *dc_pin, std::vector<uint8_t> data_pins)
+      : wr_pin_(wr_pin), dc_pin_(dc_pin), data_pins_(std::move(data_pins)) {}
 
   void setup() override;
 

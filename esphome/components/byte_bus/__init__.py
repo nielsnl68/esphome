@@ -7,7 +7,7 @@ from esphome.const import (
     CONF_CLIENT_ID,
 )
 
-CODEOWNERS = ["@clydebarrow", "nielsnl68"]
+CODEOWNERS = ["@clydebarrow", "@nielsnl68"]
 
 CONF_BUS_TYPE = "bus_type"
 CONF_BUS_ID = "bus_id"

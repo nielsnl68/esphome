@@ -157,6 +157,7 @@ TYPE_SPI = "SPI"
 
 CONFIG_SCHEMA = cv.All(
     byte_bus.validate_databus_registry(BASE_SCHEMA, default=TYPE_SPI),
+
     cv.has_at_most_one_key(CONF_PAGES, CONF_LAMBDA),
     _validate,
 )
@@ -168,9 +169,11 @@ async def to_code(config):
 
     data_rate = int(max(config[CONF_DATA_RATE] / 1e6, 1))
     await display.register_display(var, config)
+
     bus_client = await byte_bus.register_databus(config)
     cg.add(var.set_bus(bus_client))
     cg.add(var.set_data_rate(data_rate))
+
     if CONF_COLOR_ORDER in config:
         cg.add(var.set_color_order(COLOR_ORDERS[config[CONF_COLOR_ORDER]]))
     if CONF_TRANSFORM in config:

@@ -212,11 +212,6 @@ class ILI9XXXILI9488 : public ILI9XXXDisplay {
 class WAVESHARERES35 : public ILI9XXXILI9488 {
  public:
   WAVESHARERES35() : ILI9XXXILI9488(INITCMD_WAVESHARE_RES_3_5) {}
-  /*
-   *  This board uses a 16 bit serial-parallel chip to implement SPI. It requires a CS transition between command
-   *  and data phases, and DC must be set before CS is enabled.
-   */
-
 };
 
 //-----------   ILI9XXX_35_TFT origin colors rotated display --------------

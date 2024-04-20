@@ -72,6 +72,7 @@ def i80_client_schema(
     return cv.Schema(schema)
 
 
+
 @byte_bus.include_databus("i80", I80ByteBus, I80Component, i80_client_schema())
 async def create_i80_client(config, var, databus_type):
     if pin := config.get(CONF_CS_PIN):

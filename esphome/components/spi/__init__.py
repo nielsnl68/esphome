@@ -376,6 +376,7 @@ def spi_device_schema(
         cv.Optional(CONF_SPI_MODE, default=default_mode): cv.enum(
             SPI_MODE_OPTIONS, upper=True
         ),
+        cv.GenerateID(CONF_CLIENT_ID): cv.declare_id(SPIClient),
     }
     if not is_databus_schema:
         schema[cv.GenerateID(CONF_SPI_ID)] = (

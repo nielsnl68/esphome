@@ -47,7 +47,6 @@ void I80ByteBus::dump_config() {
   LOG_PIN("  CS Pin: ", this->cs_);
 }
 
-
 }  // namespace i80
 }  // namespace esphome
 

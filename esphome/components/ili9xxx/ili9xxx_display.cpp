@@ -25,6 +25,7 @@ void ILI9XXXDisplay::set_madctl() {
     mad |= MADCTL_MX;
   if (this->mirror_y_)
     mad |= MADCTL_MY;
+
   this->bus_->write_command(ILI9XXX_MADCTL, mad);
   ESP_LOGD(TAG, "Wrote MADCTL 0x%02X", mad);
 }
@@ -39,6 +40,7 @@ void ILI9XXXDisplay::setup() {
   delay(20);
   this->reset_pin_->digital_write(true);
   delay(20);
+
   this->bus_->begin_transaction();
   this->init_lcd_();
   this->set_madctl();
@@ -217,6 +219,7 @@ void ILI9XXXDisplay::display_() {
   if (this->buffer_color_mode_ == BITS_16 && !this->is_18bitdisplay_ && sw_time < mw_time) {
     // 16 bit mode maps directly to display format
     ESP_LOGV(TAG, "Doing single write of %zu bytes", this->width_ * h * 2);
+
     this->set_addr_window_(0, this->y_low_, this->width_ - 1, this->y_high_);
     this->bus_->write_array(this->buffer_ + this->y_low_ * this->width_ * 2, h * this->width_ * 2);
   } else {

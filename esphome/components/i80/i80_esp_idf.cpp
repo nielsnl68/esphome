@@ -1,6 +1,6 @@
 #include "i80_component.h"
 #ifdef USE_I80
-//#ifdef USE_ESP_IDF
+
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_io_interface.h"
 #include <vector>
@@ -121,5 +121,4 @@ class I80BusIdf : public I80Bus {
 
 }  // namespace i80
 }  // namespace esphome
-//#endif  // USE_ESP_IDF
 #endif  // USE_I80

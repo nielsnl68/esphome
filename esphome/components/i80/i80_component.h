@@ -15,6 +15,7 @@ namespace i80 {
 
 static constexpr const char *TAG = "i80";
 
+
 class I80ByteBus;
 
 class I80Delegate {
@@ -57,8 +58,10 @@ class I80Component : public Component {
 
   void set_rd_pin(InternalGPIOPin *rd_pin) { this->rd_pin_ = rd_pin; }
   void dump_config() override;
+
   I80Delegate *register_device(I80ByteBus *device, GPIOPin *cs_pin, unsigned int data_rate);
   void unregister_device(I80ByteBus *device);
+
   float get_setup_priority() const override { return setup_priority::BUS; }
 
  protected:

@@ -51,7 +51,6 @@ class ByteBus {
    */
   inline void write_command(int cmd) { write_command(cmd, nullptr, 0); }
   inline void write_command(int cmd, const uint8_t data) { write_command(cmd, &data, 1); }
-  inline void write_command16(int cmd, const uint16_t data) { write_command(cmd, (const uint8_t *) &data, 2); }
   virtual void write_command(int cmd, const uint8_t *data, size_t length) = 0;
 
   virtual void dump_config(){};

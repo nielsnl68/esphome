@@ -26,7 +26,7 @@ class I80Delegate {
   // end the transaction
   virtual void end_transaction() {}
 
-  virtual void write_cmd_data(int cmd, const uint8_t *ptr, size_t length) {}
+  virtual void write_command(int cmd, const uint8_t *ptr, size_t length) {}
   virtual void write_array(const uint8_t *data, size_t length){};
 
   virtual ~I80Delegate() = default;
@@ -49,15 +49,16 @@ class I80Client;
 
 class I80Component : public Component {
  public:
-  I80Component(InternalGPIOPin *wr_pin, InternalGPIOPin *dc_pin, std::vector<uint8_t> data_pins)
-      : wr_pin_(wr_pin), dc_pin_(dc_pin), data_pins_(std::move(data_pins)) {}
+  I80Component(InternalGPIOPin *wr_pin, InternalGPIOPin *rd_pin, InternalGPIOPin *dc_pin,
+               std::vector<uint8_t> data_pins)
+      : wr_pin_(wr_pin), rd_pin_(rd_pin), dc_pin_(dc_pin), data_pins_(std::move(data_pins)) {}
 
-  void setup() override;
+  void setup() override {}
 
   void set_rd_pin(InternalGPIOPin *rd_pin) { this->rd_pin_ = rd_pin; }
   void dump_config() override;
-  I80Delegate *register_device(I80Client *device, GPIOPin *cs_pin, unsigned int data_rate);
-  void unregister_device(I80Client *device);
+  I80Delegate *register_device(I80Client *device, GPIOPin *cs_pin, unsigned int data_rate) {}
+  void unregister_device(I80Client *device){};
   float get_setup_priority() const override { return setup_priority::BUS; }
 
  protected:
@@ -69,7 +70,7 @@ class I80Component : public Component {
   std::map<I80Client *, I80Delegate *> devices_{};
 };
 
-class I80Client : public byte_bus::ByteBus {
+class I80ByteBus : public byte_bus::ByteBus {
  public:
   void bus_setup() override { this->delegate_ = this->parent_->register_device(this, this->cs_, this->data_rate_); }
   void bus_teardown() override {
@@ -77,8 +78,8 @@ class I80Client : public byte_bus::ByteBus {
     this->delegate_ = NULL_DELEGATE;
   }
 
-  void write_cmd_data(int cmd, const uint8_t *data, size_t length) override {
-    this->delegate_->write_cmd_data(cmd, data, length);
+  void write_command(int cmd, const uint8_t *data, size_t length) override {
+    this->delegate_->write_command(cmd, data, length);
   }
 
   void write_array(const uint8_t *data, size_t length) override { this->delegate_->write_array(data, length); }
@@ -86,7 +87,7 @@ class I80Client : public byte_bus::ByteBus {
   void set_parent(I80Component *parent) { this->parent_ = parent; }
 
   void set_cs_pin(GPIOPin *cs) { this->cs_ = cs; }
-  void dump_config() override;
+  void dump_config() override {};
   void set_data_rate(int data_rate) { this->data_rate_ = data_rate; }
 
  protected:

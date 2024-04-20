@@ -455,23 +455,22 @@ def final_validate_device_schema(name: str, *, require_mosi: bool, require_miso:
 @byte_bus.include_databus(
     "QSPI",
     SPIByteBus,
-    SPIComponent,
+    QuadSPIComponent,
     spi_device_schema(False, "40MHz", "mode0", True, True),
 )
 async def create_i80_client(config, var, databus_type):
-    if pin := config.get(CONF_CS_PIN):
-        cg.add(var.set_cs_pin(await cg.gpio_pin_expression(pin)))
+    cg.add(
+        var.set_spi_client(
+            config[CONF_BIT_ORDER], config[CONF_SPI_MODE], config[CONF_DATA_RATE]
+        )
+    )
+
     cg.add(var.set_data_rate(config[CONF_DATA_RATE]))
+    if cs_pin := config.get(CONF_CS_PIN):
+        cg.add(var.set_cs_pin(await cg.gpio_pin_expression(cs_pin)))
+    if pin := config.get(CONF_DC_PIN):
+        cg.add(var.set_dc_pin(await cg.gpio_pin_expression(pin)))
     if databus_type == "SPI16D":
         cg.add(var.set_16bit_data(True))
-    rhs = SPIClient.new(
-        config[CONF_BIT_ORDER], config[CONF_SPI_MODE], config[CONF_DATA_RATE]
-    )
-    client = cg.Pvariable(config[CONF_CLIENT_ID] + "_client", rhs)
-
-    cg.add(client.set_parent(await cg.get_variable(config[byte_bus.CONF_BUS_ID])))
-    if cs_pin := config.get(CONF_CS_PIN):
-        cg.add(client.set_cs_pin(await cg.gpio_pin_expression(cs_pin)))
-    cg.add(var.set_spi_client(client))
 
     return var

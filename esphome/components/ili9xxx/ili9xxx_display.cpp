@@ -25,7 +25,7 @@ void ILI9XXXDisplay::set_madctl() {
     mad |= MADCTL_MX;
   if (this->mirror_y_)
     mad |= MADCTL_MY;
-  this->bus_->write_command(ILI9XXX_MADCTL, &mad, 1);
+  this->bus_->write_command(ILI9XXX_MADCTL, mad);
   ESP_LOGD(TAG, "Wrote MADCTL 0x%02X", mad);
 }
 

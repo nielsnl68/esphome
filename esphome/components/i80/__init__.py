@@ -16,7 +16,7 @@ AUTO_LOAD = ["byte_bus"]
 
 i80_ns = cg.esphome_ns.namespace("i80")
 I80Component = i80_ns.class_("I80Component", cg.Component)
-I80Client = i80_ns.class_("I80Client", byte_bus.ByteBus)
+I80ByteBus = i80_ns.class_("I80ByteBus", byte_bus.ByteBus)
 
 CONF_RD_PIN = "rd_pin"
 CONF_WR_PIN = "wr_pin"
@@ -37,7 +37,6 @@ CONFIG_SCHEMA = cv.All(
             }
         )
     ),
-    cv.only_with_esp_idf,
 )
 
 
@@ -45,8 +44,9 @@ async def to_code(configs):
     cg.add_define("USE_I80")
     for conf in configs:
         wr = await cg.gpio_pin_expression(conf[CONF_WR_PIN])
+        rd = await cg.gpio_pin_expression(conf[CONF_WR_PIN])
         dc = await cg.gpio_pin_expression(conf[CONF_DC_PIN])
-        var = cg.new_Pvariable(conf[CONF_ID], wr, dc, conf[CONF_DATA_PINS])
+        var = cg.new_Pvariable(conf[CONF_ID], wr, rd, dc, conf[CONF_DATA_PINS])
         await cg.register_component(var, conf)
         if rd := conf.get(CONF_RD_PIN):
             rd = await cg.gpio_pin_expression(rd)
@@ -72,8 +72,8 @@ def i80_client_schema(
     return cv.Schema(schema)
 
 
-@byte_bus.include_databus("i80", I80Client, I80Component, i80_client_schema())
-async def create_i80_client(config, var):
+@byte_bus.include_databus("i80", I80ByteBus, I80Component, i80_client_schema())
+async def create_i80_client(config, var, databus_type):
     if pin := config.get(CONF_CS_PIN):
         cg.add(var.set_cs_pin(await cg.gpio_pin_expression(pin)))
     cg.add(var.set_data_rate(config[CONF_DATA_RATE]))

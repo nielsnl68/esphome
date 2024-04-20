@@ -168,7 +168,7 @@ async def to_code(config):
 
     data_rate = int(max(config[CONF_DATA_RATE] / 1e6, 1))
     await display.register_display(var, config)
-    bus_client = byte_bus.register_databus(config)
+    bus_client = await byte_bus.register_databus(config)
     cg.add(var.set_bus(bus_client))
     cg.add(var.set_data_rate(data_rate))
     if CONF_COLOR_ORDER in config:

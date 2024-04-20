@@ -49,20 +49,11 @@ class ByteBus {
    * @param data
    * @param length
    */
-  virtual void write_cmd_data(int cmd, const uint8_t *data, size_t length) = 0;
 
-  inline void write_command(int cmd) {
-    write_cmd_data(cmd, nullptr, 0);
-  }
-  inline void write_command(int cmd, const uint8_t data) {
-    write_cmd_data(cmd, &data, 1);
-  }
-  inline void write_command16(int cmd, const uint16_t data) {
-    write_cmd_data(cmd, &data, 2);
-  }
-  inline void write_command(int cmd, const uint8_t *data, size_t length) {
-    write_cmd_data(cmd, data, length);
-  }
+  inline void write_command(int cmd) { write_command(cmd, nullptr, 0); }
+  inline void write_command(int cmd, const uint8_t data) { write_command(cmd, &data, 1); }
+  inline void write_command16(int cmd, const uint16_t data) { write_command(cmd, (const uint8_t *) &data, 2); }
+  virtual void write_command(int cmd, const uint8_t *data, size_t length) = 0;
 
   virtual void dump_config(){};
 
@@ -71,10 +62,8 @@ class ByteBus {
       do_begin_transaction();
     }
   }
-  void end_transaction(){
-    if (this->transaction_counter == 0) {
-      ESP_LOGE("Transaction is already Ended")
-    } else if (this->transaction_counter == 1) {
+  void end_transaction() {
+    if (this->transaction_counter <= 1) {
       do_end_transaction();
       this->transaction_counter = 0;
     } else {

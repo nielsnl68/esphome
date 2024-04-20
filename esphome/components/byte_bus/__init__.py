@@ -18,16 +18,15 @@ ByteBus = byte_bus_ns.class_("ByteBus")
 DATABUS_REGISTRY = Registry()
 
 
-def include_databus(name, bus_class, bus_component, schema, *extra_validators):
-    schema = cv.Schema(schema).extend(
+def include_databus(name, bus_class, bus_component, schema):
+    schema = schema.extend(
         {
             cv.GenerateID(CONF_BUS_ID): cv.use_id(bus_component),
             cv.GenerateID(CONF_CLIENT_ID): cv.declare_id(bus_class),
         }
     )
-    validator = cv.All(schema, *extra_validators)
 
-    return DATABUS_REGISTRY.register(name, bus_class, validator)
+    return DATABUS_REGISTRY.register(name, bus_class, schema)
 
 
 def validate_databus_registry(base_schema, **kwargs):
@@ -71,4 +70,4 @@ async def register_databus(config):
     var = cg.Pvariable(config[CONF_CLIENT_ID], rhs)
     cg.add(var.set_parent(await cg.get_variable(config[CONF_BUS_ID])))
 
-    return await databus.fun(config, var)
+    return await databus.fun(config, var, config[CONF_BUS_TYPE])

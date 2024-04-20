@@ -63,7 +63,7 @@ void SPIComponent::setup() {
   }
 }
 
-void SPIByteBus::write_cmd_data(int cmd, const uint8_t *data, size_t length) {
+void SPIByteBus::write_command(int cmd, const uint8_t *data, size_t length) {
   ESP_LOGV(TAG, "Write cmd %X, length %d", cmd, (unsigned) length);
   this->begin_transaction();
   if (cmd != -1) {

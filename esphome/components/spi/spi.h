@@ -470,13 +470,21 @@ class SPIByteBus : public byte_bus::ByteBus {
   void write_array(const uint8_t *data, size_t length) override { this->client_->write_array(data, length); }
   void bus_teardown() override { this->client_->spi_teardown(); }
 
-  void write_cmd_data(int cmd, const uint8_t *data, size_t length) override;
+  void write_command(int cmd, const uint8_t *data, size_t length) override;
 
   void dump_config() override;
 
-  void set_spi_client(SPIClient *client) { this->client_ = client}
   void set_dc_pin(GPIOPin *dc_pin) { this->dc_pin_ = dc_pin; }
   void set_16bit_data(bool data) { this->is_16bit_data_ = data; }
+  void set_parent(SPIComponent *parent) { this->parent_ = parent; }
+
+  void set_spi_client(SPIBitOrder bit_order, SPIMode mode, uint32_t data_rate) {
+    this->client_ = new SPIClient(bit_order, mode, data_rate);
+    this->client_->set_parent(this->parent_);
+  }
+  void set_cs_pin(GPIOPin *cs_pin) { this->client_->set_cs_pin(cs_pin); }
+  void set_data_rate(int data_rate) { this->client_->set_data_rate(data_rate); }
+
  protected:
   void do_begin_transaction() override { this->client_->enable(); }
   void do_end_transaction() override { this->client_->disable(); }
@@ -484,6 +492,7 @@ class SPIByteBus : public byte_bus::ByteBus {
   SPIClient *client_;
   GPIOPin *dc_pin_{byte_bus::NULL_PIN};
   bool is_16bit_data_{false};
+  SPIComponent *parent_{};
 };
 }  // namespace spi
 }  // namespace esphome

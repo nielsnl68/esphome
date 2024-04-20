@@ -15,7 +15,7 @@ namespace i80 {
 
 static constexpr const char *TAG = "i80";
 
-class I80Client;
+class I80ByteBus;
 
 class I80Delegate {
  public:
@@ -45,20 +45,20 @@ class I80Bus {
   virtual I80Delegate *get_delegate(GPIOPin *cs_pin, unsigned int data_rate) = 0;
 };
 
-class I80Client;
+class I80ByteBus;
 
 class I80Component : public Component {
  public:
-  I80Component(InternalGPIOPin *wr_pin, InternalGPIOPin *rd_pin, InternalGPIOPin *dc_pin,
+  I80Component(InternalGPIOPin *wr_pin, InternalGPIOPin *dc_pin,
                std::vector<uint8_t> data_pins)
-      : wr_pin_(wr_pin), rd_pin_(rd_pin), dc_pin_(dc_pin), data_pins_(std::move(data_pins)) {}
+      : wr_pin_(wr_pin),dc_pin_(dc_pin), data_pins_(std::move(data_pins)) {}
 
-  void setup() override {}
+  void setup() override;
 
   void set_rd_pin(InternalGPIOPin *rd_pin) { this->rd_pin_ = rd_pin; }
   void dump_config() override;
-  I80Delegate *register_device(I80Client *device, GPIOPin *cs_pin, unsigned int data_rate) {}
-  void unregister_device(I80Client *device){};
+  I80Delegate *register_device(I80ByteBus *device, GPIOPin *cs_pin, unsigned int data_rate);
+  void unregister_device(I80ByteBus *device);
   float get_setup_priority() const override { return setup_priority::BUS; }
 
  protected:
@@ -67,7 +67,7 @@ class I80Component : public Component {
   InternalGPIOPin *rd_pin_{};
   InternalGPIOPin *dc_pin_{};
   std::vector<uint8_t> data_pins_{};
-  std::map<I80Client *, I80Delegate *> devices_{};
+  std::map<I80ByteBus *, I80Delegate *> devices_{};
 };
 
 class I80ByteBus : public byte_bus::ByteBus {
@@ -87,7 +87,7 @@ class I80ByteBus : public byte_bus::ByteBus {
   void set_parent(I80Component *parent) { this->parent_ = parent; }
 
   void set_cs_pin(GPIOPin *cs) { this->cs_ = cs; }
-  void dump_config() override {};
+  void dump_config() override;
   void set_data_rate(int data_rate) { this->data_rate_ = data_rate; }
 
  protected:

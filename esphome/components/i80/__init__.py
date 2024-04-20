@@ -44,9 +44,9 @@ async def to_code(configs):
     cg.add_define("USE_I80")
     for conf in configs:
         wr = await cg.gpio_pin_expression(conf[CONF_WR_PIN])
-        rd = await cg.gpio_pin_expression(conf[CONF_WR_PIN])
         dc = await cg.gpio_pin_expression(conf[CONF_DC_PIN])
-        var = cg.new_Pvariable(conf[CONF_ID], wr, rd, dc, conf[CONF_DATA_PINS])
+
+        var = cg.new_Pvariable(conf[CONF_ID], wr, dc, conf[CONF_DATA_PINS])
         await cg.register_component(var, conf)
         if rd := conf.get(CONF_RD_PIN):
             rd = await cg.gpio_pin_expression(rd)

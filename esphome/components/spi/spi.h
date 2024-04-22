@@ -486,7 +486,6 @@ class SPIByteBus : public byte_bus::ByteBus {
   SPIClient *client_;
   GPIOPin *dc_pin_{byte_bus::NULL_PIN};
   bool is_16bit_data_{false};
-
 };
 }  // namespace spi
 }  // namespace esphome

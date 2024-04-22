@@ -113,11 +113,7 @@ def final_validate_databus_schema(name: str, pin_count, config=None):
     final_args={"pin_count": 16},
 )
 async def create_i80_databus(config, var, bustype):
-    cg.add(
-        var.set_parent(
-            await cg.get_variable(config[CONF_I80_ID]), config["i80_pin_count"]
-        )
-    )
+    cg.add(var.set_parent(await cg.get_variable(config[CONF_I80_ID])))
     cg.add(var.set_data_rate(config[CONF_DATA_RATE]))
     if pin := config.get(CONF_CS_PIN):
         cg.add(var.set_cs_pin(await cg.gpio_pin_expression(pin)))

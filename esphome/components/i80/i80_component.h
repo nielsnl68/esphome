@@ -87,7 +87,7 @@ class I80ByteBus : public byte_bus::ByteBus {
 
   void dump_config() override;
 
-  void set_parent(I80Component *parent, uint8_t pin_count) { this->parent_ = parent; }
+  void set_parent(I80Component *parent) { this->parent_ = parent; }
   void set_cs_pin(GPIOPin *cs) { this->cs_ = cs; }
   void set_data_rate(int data_rate) { this->data_rate_ = data_rate; }
 

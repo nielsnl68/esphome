@@ -452,9 +452,9 @@ def final_validate_databus_schema(
         raise cv.Invalid(
             f"The {bus_type} bus type requires that the {spi_id} component has the '{CONF_MISO_PIN}' declared."
         )
-    if require_mosi and (CONF_MISO_PIN not in spi):
+    if require_mosi and (CONF_MOSI_PIN not in spi):
         raise cv.Invalid(
-            f"The {bus_type} bus type requires that the {spi_id} component has the '{CONF_MISO_PIN}' declared."
+            f"The {bus_type} bus type requires that the {spi_id} component has the '{CONF_MOSI_PIN}' declared."
         )
 
 
@@ -481,7 +481,7 @@ def final_validate_databus_schema(
 )
 async def create_spi_databus(config, var, databus):
 
-    cg.add(var.set_spi_client(create_spi_client(config)))
+    cg.add(var.set_spi_client(await create_spi_client(config)))
 
     if pin := config.get(CONF_DC_PIN):
         cg.add(var.set_dc_pin(await cg.gpio_pin_expression(pin)))

@@ -52,25 +52,229 @@ ILI9XXXColorMode = ili9xxx_ns.enum("ILI9XXXColorMode")
 ColorOrder = display.display_ns.enum("ColorMode")
 
 MODELS = {
-    "GC9A01A": [ili9xxx_ns.class_("ILI9XXXGC9A01A", ILI9XXXDisplay), ["SPI"]],
-    "M5STACK": [ili9xxx_ns.class_("ILI9XXXM5Stack", ILI9XXXDisplay), ["SPI"]],
-    "M5CORE": [ili9xxx_ns.class_("ILI9XXXM5CORE", ILI9XXXDisplay), ["SPI"]],
-    "TFT_2.4": [ili9xxx_ns.class_("ILI9XXXILI9341", ILI9XXXDisplay), ["SPI"]],
-    "TFT_2.4R": [ili9xxx_ns.class_("ILI9XXXILI9342", ILI9XXXDisplay), ["SPI"]],
-    "ILI9341": [ili9xxx_ns.class_("ILI9XXXILI9341", ILI9XXXDisplay), ["SPI"]],
-    "ILI9342": [ili9xxx_ns.class_("ILI9XXXILI9342", ILI9XXXDisplay), ["SPI"]],
-    "ILI9481": [ili9xxx_ns.class_("ILI9XXXILI9481", ILI9XXXDisplay), ["SPI"]],
-    "ILI9481-18": [ili9xxx_ns.class_("ILI9XXXILI948118", ILI9XXXDisplay), ["SPI"]],
-    "ILI9486": [ili9xxx_ns.class_("ILI9XXXILI9486", ILI9XXXDisplay), ["SPI"]],
-    "ILI9488": [ili9xxx_ns.class_("ILI9XXXILI9488", ILI9XXXDisplay), ["SPI"]],
-    "ILI9488_A": [ili9xxx_ns.class_("ILI9XXXILI9488A", ILI9XXXDisplay), ["SPI"]],
-    "ST7796": [ili9xxx_ns.class_("ILI9XXXST7796", ILI9XXXDisplay), ["SPI"]],
-    "ST7789V": [ili9xxx_ns.class_("ILI9XXXST7789V", ILI9XXXDisplay), ["SPI"]],
-    "S3BOX": [ili9xxx_ns.class_("ILI9XXXS3Box", ILI9XXXDisplay), ["SPI"]],
-    "S3BOX_LITE": [ili9xxx_ns.class_("ILI9XXXS3BoxLite", ILI9XXXDisplay), ["SPI"]],
+    "GC9A01A": [
+        ili9xxx_ns.class_("ILI9XXXGC9A01A", ILI9XXXDisplay),
+        True,
+        [
+            "spi",
+            "dspi",
+            "i80",
+            "par8",
+            "par9",
+            "par12",
+            "par16",
+            "par18",
+            "rgb6",
+            "rgb12",
+            "rgb16",
+            "rgb18",
+        ],
+        [240, 240],
+    ],
+    "ILI9341": [
+        ili9xxx_ns.class_("ILI9XXXILI9341", ILI9XXXDisplay),
+        True,
+        [
+            "spi",
+            "i80",
+            "par8",
+            "par9",
+            "par16",
+            "par18",
+            "rgb6",
+            "rgb16",
+            "rgb18",
+        ],
+        [320, 240],
+    ],
+    "ILI9342": [
+        ili9xxx_ns.class_("ILI9XXXILI9342", ILI9XXXDisplay),
+        True,
+        [
+            "spi",
+            "i80",
+            "par8",
+            "par9",
+            "par16",
+            "par18",
+            "rgb6",
+            "rgb16",
+            "rgb18",
+        ],
+        [240, 320],
+    ],
+    "ILI9342C": [
+        ili9xxx_ns.class_("ILI9XXXILI9342", ILI9XXXDisplay),
+        True,
+        [
+            "spi",
+            "i80",
+            "par8",
+            "par9",
+            "par16",
+            "par18",
+            "rgb6",
+            "rgb16",
+            "rgb18",
+        ],
+        [240, 320],
+    ],
+    "ILI9481": [
+        ili9xxx_ns.class_("ILI9XXXILI9481", ILI9XXXDisplay),
+        True,
+        [
+            "spi",
+            "i80",
+            "qspi",
+            "par8",
+            "par9",
+            "par16",
+            "par18",
+            "rgb16",
+            "rgb18",
+        ],
+        [480, 320],
+    ],
+    "ILI9486": [
+        ili9xxx_ns.class_("ILI9XXXILI9486", ILI9XXXDisplay),
+        False,
+        [
+            "spi",
+            "i80",
+            "par8",
+            "par9",
+            "par16",
+            "par18",
+            "rgb16",
+            "rgb18",
+        ],
+        [480, 320],
+    ],
+    "ILI9488": [
+        ili9xxx_ns.class_("ILI9XXXILI9488", ILI9XXXDisplay),
+        False,
+        [
+            "spi",
+            "i80",
+            "par8",
+            "par9",
+            "par16",
+            "par18",
+            "par24",
+            "rgb16",
+            "rgb18",
+            "rgb24",
+        ],
+        [480, 320],
+    ],
+    "ILI9488_A": [
+        ili9xxx_ns.class_("ILI9XXXILI9488A", ILI9XXXDisplay),
+        False,
+        [
+            "spi",
+            "i80",
+            "par8",
+            "par9",
+            "par16",
+            "par18",
+            "par24",
+            "rgb16",
+            "rgb18",
+            "rgb24",
+        ],
+        [480, 320],
+    ],
+    "ST7796": [
+        ili9xxx_ns.class_("ILI9XXXST7796", ILI9XXXDisplay),
+        True,
+        [
+            "spi",
+            "i80",
+            "par8",
+            "par9",
+            "par16",
+            "par18",
+            "rgb16",
+            "rgb18",
+        ],
+        [480, 320],
+    ],
+    "ST7796S": [
+        ili9xxx_ns.class_("ILI9XXXST7796", ILI9XXXDisplay),
+        True,
+        [
+            "spi",
+            "i80",
+            "par8",
+            "par9",
+            "par16",
+            "par18",
+            "rgb16",
+            "rgb18",
+            "rgb24",
+        ],
+        [480, 320],
+    ],
+    "ST7796U": [
+        ili9xxx_ns.class_("ILI9XXXST7796", ILI9XXXDisplay),
+        False,
+        [
+            "spi",
+            "i80",
+            "par8",
+            "par9",
+            "par16",
+            "par18",
+            "rgb16",
+            "rgb18",
+            "rgb24",
+        ],
+        [480, 320],
+    ],
+    "ST7789V": [
+        ili9xxx_ns.class_("ILI9XXXST7789V", ILI9XXXDisplay),
+        True,
+        [
+            "spi",
+            "i80",
+            "par8",
+            "par9",
+            "par16",
+            "par18",
+            "rgb6",
+            "rgb16",
+            "rgb18",
+            "rgb24",
+        ],
+        [320, 240],
+    ],
+    "M5STACK": [ili9xxx_ns.class_("ILI9XXXM5Stack", ILI9XXXDisplay), False, ["spi"]],
+    "M5CORE": [ili9xxx_ns.class_("ILI9XXXM5CORE", ILI9XXXDisplay), True, ["spi"]],
+    "TFT_2.4": [
+        ili9xxx_ns.class_("ILI9XXXILI9341", ILI9XXXDisplay),
+        True,
+        ["spi", "i80", "rgb"],
+    ],
+    "TFT_2.4R": [
+        ili9xxx_ns.class_("ILI9XXXILI9342", ILI9XXXDisplay),
+        True,
+        ["spi", "i80", "rgb"],
+    ],
+    "S3BOX": [ili9xxx_ns.class_("ILI9XXXS3Box", ILI9XXXDisplay), False, ["spi"]],
+    "S3BOX_LITE": [
+        ili9xxx_ns.class_("ILI9XXXS3BoxLite", ILI9XXXDisplay),
+        False,
+        ["spi"],
+    ],
+    "W32-SC01-Plus": [
+        ili9xxx_ns.class_("ILI9XXXST7796", ILI9XXXDisplay),
+        False,
+        ["i80", "par8"],
+    ],
     "WAVESHARE_RES_3_5": [
         ili9xxx_ns.class_("WAVESHARERES35", ILI9XXXDisplay),
-        ["SPI16D"],
+        False,
+        ["spi16d"],
     ],
 }
 
@@ -102,16 +306,20 @@ def _validate(config):
         raise cv.Invalid(
             "Providing color palette images requires palette mode to be 'IMAGE_ADAPTIVE'"
         )
-    if CORE.is_esp8266 and config.get(CONF_MODEL) not in [
-        "M5STACK",
-        "TFT_2.4",
-        "TFT_2.4R",
-        "ILI9341",
-        "ILI9342",
-        "ST7789V",
-    ]:
+
+    model = config.get(CONF_MODEL)
+    if CORE.is_esp8266 and not MODELS[model][1]:
         raise cv.Invalid("Selected model can't run on ESP8266; use an ESP32 with PSRAM")
+    if config[CONF_BUS_TYPE] not in MODELS[model][2]:
+        raise cv.Invalid("Selected bus_type can't be used with selected model")
     return config
+
+
+def give_default_bus_type(config):
+    model = config.get(CONF_MODEL, None)
+    if model is None:
+        return None
+    return MODELS[model][2][0]
 
 
 BASE_SCHEMA = display.FULL_DISPLAY_SCHEMA.extend(
@@ -152,14 +360,17 @@ BASE_SCHEMA = display.FULL_DISPLAY_SCHEMA.extend(
     }
 ).extend(cv.polling_component_schema("1s"))
 
-TYPE_SPI = "SPI"
-# TYPE_I80 = "i80"
 
 CONFIG_SCHEMA = cv.All(
-    byte_bus.validate_databus_registry(BASE_SCHEMA, default=TYPE_SPI),
+    byte_bus.validate_databus_registry(
+        BASE_SCHEMA, default=give_default_bus_type, lower=True
+    ),
     cv.has_at_most_one_key(CONF_PAGES, CONF_LAMBDA),
     _validate,
 )
+
+
+FINAL_VALIDATE_SCHEMA = byte_bus.final_validate_databus_schema("Display")
 
 
 async def to_code(config):

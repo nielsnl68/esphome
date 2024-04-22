@@ -479,7 +479,6 @@ class SPIByteBus : public byte_bus::ByteBus {
   void set_dc_pin(GPIOPin *dc_pin) { this->dc_pin_ = dc_pin; }
   void set_16bit_data(bool data) { this->is_16bit_data_ = data; }
 
-
  protected:
   void do_begin_transaction() override { this->client_->enable(); }
   void do_end_transaction() override { this->client_->disable(); }

@@ -615,7 +615,12 @@ void VoiceAssistant::on_event(const api::VoiceAssistantEventResponse &msg) {
         return;
       }
       ESP_LOGI(TAG, "Response: \"%s\"", text.c_str());
-      this->defer([this, text]() { this->tts_start_trigger_->trigger(text); });
+      this->defer([this, text]() {
+        this->tts_start_trigger_->trigger(text);
+#ifdef USE_SPEAKER
+        this->speaker_->start();
+#endif
+      });
       break;
     }
     case api::enums::VOICE_ASSISTANT_TTS_END: {

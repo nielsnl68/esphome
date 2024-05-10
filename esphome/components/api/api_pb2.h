@@ -188,6 +188,9 @@ enum VoiceAssistantEvent : uint32_t {
   VOICE_ASSISTANT_WAKE_WORD_END = 10,
   VOICE_ASSISTANT_STT_VAD_START = 11,
   VOICE_ASSISTANT_STT_VAD_END = 12,
+
+  VOICE_ASSISTANT_CONVERSATION_ID = 50,
+
   VOICE_ASSISTANT_TTS_STREAM_START = 98,
   VOICE_ASSISTANT_TTS_STREAM_END = 99,
 };
@@ -1752,6 +1755,7 @@ class VoiceAssistantEventResponse : public ProtoMessage {
   enums::VoiceAssistantEvent event_type{};
   std::vector<VoiceAssistantEventData> data{};
   void encode(ProtoWriteBuffer buffer) const override;
+  std::string get_value(std::string name) const;
 #ifdef HAS_PROTO_MESSAGE_DUMP
   void dump_to(std::string &out) const override;
 #endif

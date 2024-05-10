@@ -6785,6 +6785,15 @@ void VoiceAssistantEventResponse::encode(ProtoWriteBuffer buffer) const {
     buffer.encode_message<VoiceAssistantEventData>(2, it, true);
   }
 }
+std::string VoiceAssistantEventResponse::get_value(std::string name) const {
+  for (auto arg : data) {
+    if (arg.name == "text") {
+      return std::move(arg.value);
+    }
+  }
+  return "";
+}
+
 #ifdef HAS_PROTO_MESSAGE_DUMP
 void VoiceAssistantEventResponse::dump_to(std::string &out) const {
   __attribute__((unused)) char buffer[64];

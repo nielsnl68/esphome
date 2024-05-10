@@ -282,6 +282,7 @@ void VoiceAssistant::loop() {
       }
       break;
     }
+    case State::START_RESPONSE:
     case State::AWAITING_RESPONSE: {
       break;  // State changed by events
     }
@@ -424,6 +425,8 @@ static const LogString *voice_assistant_state_to_string(State state) {
       return LOG_STR("STOP_MICROPHONE");
     case State::STOPPING_MICROPHONE:
       return LOG_STR("STOPPING_MICROPHONE");
+    case State::START_RESPONSE:
+      return LOG_STR("START_RESPONSE");
     case State::AWAITING_RESPONSE:
       return LOG_STR("AWAITING_RESPONSE");
     case State::STREAMING_RESPONSE:
@@ -544,6 +547,7 @@ void VoiceAssistant::request_stop() {
     case State::STOPPING_MICROPHONE:
       this->desired_state_ = State::IDLE;
       break;
+    case State::START_RESPONSE:
     case State::AWAITING_RESPONSE:
     case State::STREAMING_RESPONSE:
     case State::RESPONSE_FINISHED:

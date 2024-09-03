@@ -160,7 +160,7 @@ void Rtttl::loop() {
       return;
     }
     if (this->samples_sent_ != this->samples_count_) {
-      SpeakerSample sample[SAMPLE_BUFFER_SIZE + 2];
+      uint16_t sample[SAMPLE_BUFFER_SIZE + 2];
       int x = 0;
       double rem = 0.0;
 
@@ -170,14 +170,9 @@ void Rtttl::loop() {
         if (this->samples_per_wave_ != 0 && this->samples_sent_ >= this->samples_gap_) {  // Play note//
           rem = ((this->samples_sent_ << 10) % this->samples_per_wave_) * (360.0 / this->samples_per_wave_);
 
-          int16_t val = (127 * this->gain_) * sin(deg2rad(rem));  // 16bit = 49152
-
-          sample[x].left = val;
-          sample[x].right = val;
-
+          sample[x] = (49152 * this->gain_) * sin(deg2rad(rem));  // 16bit = 49152
         } else {
-          sample[x].left = 0;
-          sample[x].right = 0;
+          sample[x] = 0;
         }
 
         if (x >= SAMPLE_BUFFER_SIZE || this->samples_sent_ >= this->samples_count_) {
@@ -188,7 +183,7 @@ void Rtttl::loop() {
       }
       if (x > 0) {
         int send = this->speaker_->play((uint8_t *) (&sample), x * 2);
-        if (send != x * 4) {
+        if (send != x * 2) {
           this->samples_sent_ -= (x - (send / 2));
         }
         return;
@@ -348,11 +343,7 @@ void Rtttl::finish_() {
 #endif
 #ifdef USE_SPEAKER
   if (this->speaker_ != nullptr) {
-    SpeakerSample sample[2];
-    sample[0].left = 0;
-    sample[0].right = 0;
-    sample[1].left = 0;
-    sample[1].right = 0;
+    uint64_t sample = 0;
     this->speaker_->play((uint8_t *) (&sample), 8);
 
     this->speaker_->finish();

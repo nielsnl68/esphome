@@ -1,9 +1,9 @@
 #pragma once
 
+#include "esphome/core/defines.h"
+#ifdef USE_API
 #include "esphome/core/component.h"
 #include "esphome/core/component_iterator.h"
-#include "esphome/core/defines.h"
-
 namespace esphome {
 namespace api {
 
@@ -76,6 +76,9 @@ class ListEntitiesIterator : public ComponentIterator {
 #ifdef USE_EVENT
   bool on_event(event::Event *event) override;
 #endif
+#ifdef USE_UPDATE
+  bool on_update(update::UpdateEntity *update) override;
+#endif
   bool on_end() override;
 
  protected:
@@ -84,3 +87,4 @@ class ListEntitiesIterator : public ComponentIterator {
 
 }  // namespace api
 }  // namespace esphome
+#endif

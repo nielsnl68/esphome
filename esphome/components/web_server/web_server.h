@@ -3,12 +3,13 @@
 #include "list_entities.h"
 
 #include "esphome/components/web_server_base/web_server_base.h"
+#ifdef USE_WEBSERVER
 #include "esphome/core/component.h"
 #include "esphome/core/controller.h"
 #include "esphome/core/entity_base.h"
 
-#include <vector>
 #include <map>
+#include <vector>
 #ifdef USE_ESP32
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
@@ -42,6 +43,12 @@ struct UrlMatch {
 };
 
 struct SortingComponents {
+  float weight;
+  uint64_t group_id;
+};
+
+struct SortingGroup {
+  std::string name;
   float weight;
 };
 
@@ -315,8 +322,21 @@ class WebServer : public Controller, public Component, public AsyncWebHandler {
 #ifdef USE_EVENT
   void on_event(event::Event *obj, const std::string &event_type) override;
 
+  /// Handle a event request under '/event<id>'.
+  void handle_event_request(AsyncWebServerRequest *request, const UrlMatch &match);
+
   /// Dump the event details with its value as a JSON string.
   std::string event_json(event::Event *obj, const std::string &event_type, JsonDetail start_config);
+#endif
+
+#ifdef USE_UPDATE
+  void on_update(update::UpdateEntity *obj) override;
+
+  /// Handle a update request under '/update/<id>'.
+  void handle_update_request(AsyncWebServerRequest *request, const UrlMatch &match);
+
+  /// Dump the update state with its value as a JSON string.
+  std::string update_json(update::UpdateEntity *obj, JsonDetail start_config);
 #endif
 
   /// Override the web handler's canHandle method.
@@ -324,9 +344,10 @@ class WebServer : public Controller, public Component, public AsyncWebHandler {
   /// Override the web handler's handleRequest method.
   void handleRequest(AsyncWebServerRequest *request) override;
   /// This web handle is not trivial.
-  bool isRequestHandlerTrivial() override;
+  bool isRequestHandlerTrivial() override;  // NOLINT(readability-identifier-naming)
 
-  void add_entity_to_sorting_list(EntityBase *entity, float weight);
+  void add_entity_config(EntityBase *entity, float weight, uint64_t group);
+  void add_sorting_group(uint64_t group_id, const std::string &group_name, float weight);
 
  protected:
   void schedule_(std::function<void()> &&f);
@@ -335,6 +356,8 @@ class WebServer : public Controller, public Component, public AsyncWebHandler {
   AsyncEventSource events_{"/events"};
   ListEntitiesIterator entities_iterator_;
   std::map<EntityBase *, SortingComponents> sorting_entitys_;
+  std::map<uint64_t, SortingGroup> sorting_groups_;
+
 #if USE_WEBSERVER_VERSION == 1
   const char *css_url_{nullptr};
   const char *js_url_{nullptr};
@@ -356,3 +379,4 @@ class WebServer : public Controller, public Component, public AsyncWebHandler {
 
 }  // namespace web_server
 }  // namespace esphome
+#endif

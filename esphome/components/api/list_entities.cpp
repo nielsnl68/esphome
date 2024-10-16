@@ -1,4 +1,5 @@
 #include "list_entities.h"
+#ifdef USE_API
 #include "api_connection.h"
 #include "esphome/core/application.h"
 #include "esphome/core/log.h"
@@ -98,6 +99,10 @@ bool ListEntitiesIterator::on_alarm_control_panel(alarm_control_panel::AlarmCont
 #ifdef USE_EVENT
 bool ListEntitiesIterator::on_event(event::Event *event) { return this->client_->send_event_info(event); }
 #endif
+#ifdef USE_UPDATE
+bool ListEntitiesIterator::on_update(update::UpdateEntity *update) { return this->client_->send_update_info(update); }
+#endif
 
 }  // namespace api
 }  // namespace esphome
+#endif

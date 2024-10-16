@@ -1,12 +1,13 @@
 #pragma once
 
+#include "esphome/core/defines.h"
+#ifdef USE_API
 #include "api_frame_helper.h"
 #include "api_pb2.h"
 #include "api_pb2_service.h"
 #include "api_server.h"
 #include "esphome/core/application.h"
 #include "esphome/core/component.h"
-#include "esphome/core/defines.h"
 
 #include <vector>
 
@@ -151,6 +152,10 @@ class APIConnection : public APIServerConnection {
   void on_voice_assistant_event_response(const VoiceAssistantEventResponse &msg) override;
   void on_voice_assistant_audio(const VoiceAssistantAudio &msg) override;
   void on_voice_assistant_timer_event_response(const VoiceAssistantTimerEventResponse &msg) override;
+  void on_voice_assistant_announce_request(const VoiceAssistantAnnounceRequest &msg) override;
+  VoiceAssistantConfigurationResponse voice_assistant_get_configuration(
+      const VoiceAssistantConfigurationRequest &msg) override;
+  void voice_assistant_set_configuration(const VoiceAssistantSetConfiguration &msg) override;
 #endif
 
 #ifdef USE_ALARM_CONTROL_PANEL
@@ -162,6 +167,12 @@ class APIConnection : public APIServerConnection {
 #ifdef USE_EVENT
   bool send_event(event::Event *event, std::string event_type);
   bool send_event_info(event::Event *event);
+#endif
+
+#ifdef USE_UPDATE
+  bool send_update_state(update::UpdateEntity *update);
+  bool send_update_info(update::UpdateEntity *update);
+  void update_command(const UpdateCommandRequest &msg) override;
 #endif
 
   void on_disconnect_response(const DisconnectResponse &value) override;
@@ -258,3 +269,4 @@ class APIConnection : public APIServerConnection {
 
 }  // namespace api
 }  // namespace esphome
+#endif

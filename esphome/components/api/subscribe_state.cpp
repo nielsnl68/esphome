@@ -1,4 +1,5 @@
 #include "subscribe_state.h"
+#ifdef USE_API
 #include "api_connection.h"
 #include "esphome/core/log.h"
 
@@ -77,7 +78,11 @@ bool InitialStateIterator::on_alarm_control_panel(alarm_control_panel::AlarmCont
   return this->client_->send_alarm_control_panel_state(a_alarm_control_panel);
 }
 #endif
+#ifdef USE_UPDATE
+bool InitialStateIterator::on_update(update::UpdateEntity *update) { return this->client_->send_update_state(update); }
+#endif
 InitialStateIterator::InitialStateIterator(APIConnection *client) : client_(client) {}
 
 }  // namespace api
 }  // namespace esphome
+#endif

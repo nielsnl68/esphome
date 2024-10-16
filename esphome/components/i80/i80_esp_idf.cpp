@@ -9,7 +9,7 @@
 namespace esphome {
 namespace i80 {
 
-static const size_t MAX_TRANSFER = 320 * 480 * 2;
+static const size_t MAX_TRANSFER = 4092;
 
 static volatile bool write_complete = true;  // NOLINT
 static bool trans_done(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx) {

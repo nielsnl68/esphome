@@ -42,7 +42,7 @@ class I80Bus {
  public:
   I80Bus() = default;
 
-  virtual I80Delegate *get_delegate(GPIOPin *cs_pin, unsigned int data_rate) = 0;
+  virtual I80Delegate *get_delegate(GPIOPin *cs_pin, uint32_t data_rate) = 0;
 };
 
 class I80Client;

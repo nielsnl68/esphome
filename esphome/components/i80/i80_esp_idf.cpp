@@ -79,8 +79,6 @@ class I80BusIdf : public I80Bus {
     config.wr_gpio_num = wr_pin->get_pin();
     config.clk_src = LCD_CLK_SRC_PLL160M;
     config.max_transfer_bytes = MAX_TRANSFER;
-    config.psram_trans_align = 16;
-    config.sram_trans_align = 16;
     for (size_t i = 0; i != data_pins.size(); i++) {
       config.data_gpio_nums[i] = data_pins[i];
     }

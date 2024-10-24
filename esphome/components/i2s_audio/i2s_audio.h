@@ -21,6 +21,9 @@ class I2SAudioBase : public Parented<I2SAudioComponent> {
   void set_use_apll(uint32_t use_apll) { this->use_apll_ = use_apll; }
 
  protected:
+  virtual bool lock_component(uint32_t hash) = 0;
+  virtual void unlock_component(uint32_t hash) = 0;
+
   i2s_mode_t i2s_mode_{};
   i2s_channel_fmt_t channel_;
   uint32_t sample_rate_;
@@ -29,9 +32,37 @@ class I2SAudioBase : public Parented<I2SAudioComponent> {
   bool use_apll_;
 };
 
-class I2SAudioIn : public I2SAudioBase {};
+class I2SAudioIn : public I2SAudioBase {
+ protected:
+  void lock_component(uint32_t hash) overload {
+    if (this->parent_->component_in_lock_hash_ == 0 || this->parent_->component_in_lock_hash_ == hash) {
+      this->parent_->component_in_lock_hash_ = hash;
+      return true;
+    }
+    return false;
+  }
+  void unlock_component(uint32_t hash) {
+    if (this->parent_->component_in_lock_hash_ == hash) {
+      this->parent_->component_in_lock_hash_ = 0;
+    }
+  }
+};
 
-class I2SAudioOut : public I2SAudioBase {};
+class I2SAudioOut : public I2SAudioBase {
+ protected:
+  void lock_component(uint32_t hash) overload {
+    if (this->parent_->component_out_lock_hash_ == 0 || this->parent_->component_out_lock_hash_ == hash) {
+      this->parent_->component_out_lock_hash_ = hash;
+      return true;
+    }
+    return false;
+  }
+  void unlock_component(uint32_t hash) {
+    if (this->parent_->component_out_lock_hash_ == hash) {
+      this->parent_->component_out_lock_hash_ = 0;
+    }
+  }
+};
 
 class I2SAudioComponent : public Component {
  public:
@@ -59,6 +90,10 @@ class I2SAudioComponent : public Component {
 
  protected:
   Mutex lock_;
+
+  /* the following property is used to allow locking a component to the i2s service.*/
+  uint32_t component_out_lock_hash_{0};
+  uint32_t component_in_lock_hash_{0};
 
   I2SAudioIn *audio_in_{nullptr};
   I2SAudioOut *audio_out_{nullptr};
